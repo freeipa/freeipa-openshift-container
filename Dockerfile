@@ -1,5 +1,5 @@
 # Clone from the Fedora rawhide image
-FROM lsm5/fedora:rawhide
+FROM fedora:rawhide
 
 # Install FreeIPA client
 RUN yum install -y freeipa-client perl 'perl(Data::Dumper)' ; yum clean all
