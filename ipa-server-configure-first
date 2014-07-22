@@ -28,6 +28,8 @@ function stop_running () {
 }
 trap stop_running TERM
 
+chmod g+w /var/run /var/run/dbus
+
 cp -f /etc/resolv.conf /etc/resolv.conf.docker
 umount /etc/resolv.conf
 cp -f /etc/resolv.conf.docker /etc/resolv.conf
