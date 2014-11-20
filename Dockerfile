@@ -3,6 +3,8 @@ FROM fedora:20
 
 MAINTAINER Jan Pazdziora
 
+RUN curl -o /etc/yum.repos.d/mkosek-freeipa-fedora-20.repo https://copr.fedoraproject.org/coprs/mkosek/freeipa/repo/fedora-20/mkosek-freeipa-fedora-20.repo
+
 # Install FreeIPA server
 RUN mkdir -p /run/lock ; yum install -y freeipa-server bind bind-dyndb-ldap perl && yum clean all
 
