@@ -63,6 +63,8 @@ if [ -f /etc/ipa/ca.crt ] ; then
 		fi
 	fi
 	find /var/run -name '*.pid' | xargs rm -f
+	# Purge lock directories
+	rm -rf /var/lock/dirsrv/slapd-*/*
 	for s in messagebus sssd certmonger ipa ; do
 		service $s start
 	done
