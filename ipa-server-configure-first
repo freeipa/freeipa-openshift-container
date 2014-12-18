@@ -26,7 +26,7 @@ function usage () {
 }
 
 function stop_running () {
-	service ipa stop
+	service dirsrv stop
 	exit
 }
 trap exit TERM
