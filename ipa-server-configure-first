@@ -62,6 +62,7 @@ if [ -f /etc/ipa/ca.crt ] ; then
 			perl -pe 's/^(nameserver).*/$1 127.0.0.1/' /etc/resolv.conf.ipa > /etc/resolv.conf
 		fi
 	fi
+	find /var/run -name '*.pid' | xargs rm -f
 	for s in messagebus sssd certmonger ipa ; do
 		service $s start
 	done
