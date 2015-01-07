@@ -27,13 +27,11 @@ function usage () {
 }
 
 function stop_running () {
-	systemctl stop-running
+	service sssd stop
 }
 trap stop_running TERM
 
-systemctl stop dbus.service
 rm -rf /var/run/*.pid
-rm -f /run/systemctl-lite-running/*
 
 if [ -n "$IPA_PORT_53_UDP_ADDR" ] ; then
 	echo "nameserver $IPA_PORT_53_UDP_ADDR" > /etc/resolv.conf
@@ -50,7 +48,7 @@ if [ -f /etc/ipa/ca.crt ] ; then
 		fi
 	fi
 	echo "System is already FreeIPA-enrolled, starting the services."
-	systemctl start-enabled
+	service sssd start
 	echo "System is ready."
 else
 	if [ -z "$PASSWORD" ] ; then
