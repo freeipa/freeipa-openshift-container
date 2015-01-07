@@ -70,6 +70,7 @@ else
 		fi
 	fi
 
+	mkdir -p /etc/ssh
 	/usr/sbin/ipa-client-install $HOSTNAME_OPTS -p admin -w "$PASSWORD" -U --enable-dns-updates < /dev/null
 	cp -f /etc/hostname /etc/hostname.ipa-client
 	echo "FreeIPA-enrolled."
