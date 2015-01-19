@@ -3,6 +3,9 @@ FROM rhel6
 
 MAINTAINER Jan Pazdziora
 
+# Workaround 1182662
+RUN yum upgrade -y && yum clean all
+
 # Install FreeIPA server
 RUN yum install -y ipa-server bind bind-dyndb-ldap perl && yum clean all
 
