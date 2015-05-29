@@ -1,8 +1,8 @@
 # Clone from the RHEL 6
 # FROM rhel6
-# Workaround 1205054 and possibly 1182662
+# Workaround 1205054 and possibly 1182662; workaround 1212557
 FROM rhel6.5
-RUN yum upgrade -y && yum clean all
+RUN yum upgrade -y && yum install -y java-1.7.0-openjdk && yum clean all
 
 MAINTAINER Jan Pazdziora
 
