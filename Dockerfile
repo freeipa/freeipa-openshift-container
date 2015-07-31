@@ -3,6 +3,9 @@ FROM fedora:20
 
 MAINTAINER Jan Pazdziora
 
+# Workaround 1248467
+RUN mkdir -p /run/lock ; yum downgrade -y krb5-libs openssl-libs && yum clean all
+
 # Install FreeIPA server
 RUN mkdir -p /run/lock ; yum install -y freeipa-server bind bind-dyndb-ldap perl && yum clean all
 
