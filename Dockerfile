@@ -6,7 +6,9 @@ MAINTAINER Jan Pazdziora
 RUN curl -o /etc/yum.repos.d/mkosek-freeipa-4.2-fedora-22.repo https://copr.fedoraproject.org/coprs/mkosek/freeipa-4.2/repo/fedora-22/mkosek-freeipa-4.2-fedora-22.repo
 
 # Install FreeIPA server
-RUN mkdir -p /run/lock ; dnf install -y freeipa-server freeipa-server-dns bind bind-dyndb-ldap perl && dnf clean all
+RUN mkdir -p /run/lock ; dnf install -y freeipa-server freeipa-server-dns bind bind-dyndb-ldap perl patch && dnf clean all
+ADD ticket-5269.patch /root/ticket-5269.patch
+RUN patch /usr/lib/python2.7/site-packages/ipaserver/install/cainstance.py < /root/ticket-5269.patch && python -c 'import ipaserver.install.cainstance'
 
 ADD dbus.service /etc/systemd/system/dbus.service
 RUN ln -sf dbus.service /etc/systemd/system/messagebus.service
@@ -20,6 +22,7 @@ ADD ipa-server-configure-first /usr/sbin/ipa-server-configure-first
 RUN chmod -v +x /usr/bin/systemctl /usr/bin/systemctl-socket-daemon /usr/sbin/ipa-server-configure-first
 
 RUN groupadd -g 389 dirsrv ; useradd -u 389 -g 389 -c 'DS System User' -d '/var/lib/dirsrv' --no-create-home -s '/sbin/nologin' dirsrv
+RUN groupadd -g 288 kdcproxy ; useradd -u 288 -g 288 -c 'IPA KDC Proxy User' -d '/var/lib/kdcproxy' -s '/sbin/nologin' kdcproxy
 
 ADD volume-data-list /etc/volume-data-list
 ADD volume-data-mv-list /etc/volume-data-mv-list
