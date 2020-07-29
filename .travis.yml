@@ -24,6 +24,7 @@ before_script:
 stages:
 - sanity
 - build
+- tests
 
 matrix:
   include:
@@ -47,6 +48,10 @@ matrix:
       env: dockerfile=centos-7
     - stage: build
       env: dockerfile=fedora-23 replica=none seccomp=unconfined readonly=--read-only
+    - stage: tests
+      script:
+      - docker run --rm -it quay.io/buildah/stable buildah version
+      - ./tests/test-build-and-push-image.sh
   exclude:
     - stage: build
       env: dockerfile=rhel-7
