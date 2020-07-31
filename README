@@ -259,6 +259,15 @@ The environment variables available are:
 - **BAPI_USERNAME**: The username to login in the remote image registry.
 - **BAPI_PASSWORD**: The password to login in the remote image registry.
 
+# Testing build with a repository generated from the PRCI at freeipa
+
+You need to grab the hash where the object is stored from the PR CI
+information, and afterward you can pass on the hash as environment
+variable or writing that in the file `artifact-hash.txt`.
+
+```shell
+ARTIFACT_HASH="c8dbfc76-c4eb-11ea-88a6-fa163e90bd6d" ./devel/check-container-build-with-prci.sh
+```
 
 # License
 
