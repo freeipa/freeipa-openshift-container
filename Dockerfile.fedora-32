@@ -25,7 +25,7 @@ RUN echo "DefaultLimitNOFILE=1024" >> /etc/systemd/system.conf
 ENTRYPOINT [ "/usr/sbin/init" ]
 STOPSIGNAL RTMIN+3
 # test-addon: VOLUME [ "/var/log/journal" ]
-# test: systemd-container-failed.sh systemd-logind.service
+# test: systemd-container-failed.sh
 
 # Minimize the systemd setup
 RUN find /etc/systemd/system /usr/lib/systemd/system/{basic,multi-user,sysinit}.target.wants -type l \! -lname /dev/null | xargs rm -v
@@ -59,6 +59,8 @@ RUN /usr/local/bin/extract-rpm-upgrade-scriptlets
 # Move configuration and data to data volume
 COPY patches/ipa-data-fedora-32.patch /root
 RUN set -o pipefail ; patch --verbose -p0 --fuzz=0 < /root/ipa-data-fedora-32.patch | tee /dev/stderr | sed -n 's/^patching file //;T;/\.py$/p' | xargs python3 -m compileall
+
+COPY journald-storage.conf /usr/lib/systemd/journald.conf.d/storage.conf
 
 RUN mv /usr/sbin/ipa-join /usr/sbin/ipa-join.orig
 COPY ipa-join /usr/sbin/ipa-join

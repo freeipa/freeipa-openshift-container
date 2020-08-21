@@ -34,6 +34,8 @@ function wait_for_ipa_container() {
 				break
 			elif [ "$STATUS" == 'degraded' ] ; then
 				echo "The container systemctl is-system-running [$STATUS]."
+				$docker exec "$N" systemctl
+				$docker exec "$N" systemctl status
 				EXIT_STATUS=1
 				break
 			fi
@@ -53,7 +55,8 @@ function wait_for_ipa_container() {
 	if [ -n "$MACHINE_ID" ] ; then
 		# Check that journal landed on volume and not in host's /var/log/journal
 		$sudo ls -la $VOLUME/var/log/journal/$MACHINE_ID
-		if ls -la /var/log/journal/$MACHINE_ID ; then
+		if [ -e /var/log/journal/$MACHINE_ID ] ; then
+			ls -la /var/log/journal/$MACHINE_ID
 			exit 1
 		fi
 	fi
@@ -73,7 +76,7 @@ function run_ipa_container() {
 	fi
 	mkdir -p $VOLUME
 	SEC_OPTS=
-	if [ "$docker" != "sudo podman" ] && [ -n "$seccomp" ] ; then
+	if [ "$docker" != "sudo podman" -a "$docker" != "podman" ] && [ -n "$seccomp" ] ; then
 		SEC_OPTS="--security-opt=seccomp:$seccomp"
 	fi
 	VOLUME_OPTS=
@@ -172,7 +175,7 @@ fi
 readonly_run="$readonly"
 MASTER_IP=$( $docker inspect --format '{{ .NetworkSettings.IPAddress }}' freeipa-master )
 DOCKER_RUN_OPTS="--dns=$MASTER_IP"
-if [ "$docker" != "sudo podman" ] ; then
+if [ "$docker" != "sudo podman" -a "$docker" != "podman" ] ; then
 	DOCKER_RUN_OPTS="--link freeipa-master:ipa.example.test $DOCKER_RUN_OPTS"
 fi
 run_ipa_container $IMAGE freeipa-replica no-exit ipa-replica-install -U --principal admin --setup-ca --no-ntp
