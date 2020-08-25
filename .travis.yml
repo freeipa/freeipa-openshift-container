@@ -27,11 +27,23 @@ after_failure:
 - tests/run-partial-tests.sh Dockerfile.$dockerfile
 
 stages:
+- lint
 - build
 - test
 
 jobs:
   include:
+    - stage: lint
+      install: export docker=${docker:-docker}
+      script: |
+        result=0
+        for dockerfile in Dockerfile.*
+        do
+          $docker run --rm -it -v "$PWD:/data" -w "/data" hadolint/hadolint /bin/hadolint $dockerfile || result=$(( result + 1 ))
+        done
+        # exit $result
+      after_failure: skip
+
     - &build-stage
       stage: build
       env: dockerfile=fedora-34
