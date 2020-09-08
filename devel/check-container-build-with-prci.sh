@@ -1,13 +1,19 @@
 #!/bin/bash
 
 ##
-# It requires the hash to access the RPMS to be stored in the artifact-hash.txt file,
-# or pass on the value as environment variable.
+# Build the container using RPMs from a specified repository.
+# Supported repository sources are PR-CI and COPR.
 #
 # Usage:
+#
 #   ARTIFACT_HASH="c8dbfc76-c4eb-11ea-88a6-fa163e90bd6d" ./devel/check-container-build-with-prci.sh
+#
+#   or
+#
+#   COPR_REPO=https://.../user-project-fedora-32.repo ./devel/check-container-build-with-prci.sh
 ##
 
+ARTIFACT_HASH_FILENAME="artifact-hash.txt"
 LATEST_FEDORA="fedora-32"
 
 function yield
@@ -59,19 +65,6 @@ function print-build-system
 } # print-build-system
 
 
-function download-repo-file-to
-{
-    local output
-    local repo_url
-    output="$1"
-
-    [ "$output" == "" ] && die "'${output}' destination file can not be empty"
-    repo_url="http://freeipa-org-pr-ci.s3-website.eu-central-1.amazonaws.com/jobs/${ARTIFACT_HASH}/rpms/freeipa-prci.repo"
-    curl -s -o "${output}" "${repo_url}" \
-    || die "Error downloading repo file from '${repo_url}'"
-} # download-repo-file-to
-
-
 function is-patched-dockerfile
 {
     local dockerfilepath
@@ -117,18 +110,35 @@ function clone-repository
 
 
 [ ! -e .git ] && die "This script should be used from the repository root path"
-[ "${ARTIFACT_HASH}" == "" ] && [ ! -e "artifact-hash.txt" ] && die "No AERTIFACT_HASH variable nor artifact-hash.txt file was specified"
-ARTIFACT_HASH="${ARTIFACT_HASH-"$( cat artifact-hash.txt )"}"
 
-ARTIFACT_HASH="${ARTIFACT_HASH}" download-repo-file-to devel/freeipa-prci.repo
+if [ -n "$ARTIFACT_HASH" -o -e "$ARTIFACT_HASH_FILENAME" ]; then
+    ARTIFACT_HASH="${ARTIFACT_HASH-"$( cat "$ARTIFACT_HASH_FILENAME" )"}"
+    REPO_URL="http://freeipa-org-pr-ci.s3-website.eu-central-1.amazonaws.com/jobs/${ARTIFACT_HASH}/rpms/freeipa-prci.repo"
+    SYSTEM=$(print-build-system "$ARTIFACT_HASH")
+elif [ -n "$COPR_REPO" ]; then
+    REPO_URL="$COPR_REPO"
 
-item="Dockerfile.$( print-build-system "${ARTIFACT_HASH}" )"
+    # Derive SYSTEM from repo URL.
+    #
+    # This matches the path scheme for copr.fedorainfracloud.org, but may
+    # not be correct for copr.devel.redhat.com or other COPR instances.
+    SYSTEM=$(basename $(dirname "$REPO_URL"))
+else
+    die "Must create $ARTIFACT_HASH_FILENAME, or specify ARTIFACT_HASH or COPR_REPO"
+fi
+
+# Download repo file.  Later we will patch the Dockerfile to
+# copy it into the container.
+REPO_FILE=devel/freeipa.repo
+curl -s -o "$REPO_FILE" "$REPO_URL" \
+    || die "Error downloading repo file from '$REPO_URL'"
+
+item="Dockerfile.$SYSTEM"
 [ -e "$item" ] || die "'$item' does not exist"
 successed_files=()
 failured_files=()
 
-system="${item##*.}"
-case "${system}" in
+case "$SYSTEM" in
     "fedora-rawhide" \
     | "fedora-32" \
     | "fedora-31" \
@@ -143,7 +153,7 @@ case "${system}" in
         ;;
 esac
 cp -f "${item}" "Dockerfile.prci"
-patch-dockerfile Dockerfile.prci devel/freeipa-prci.repo
+patch-dockerfile Dockerfile.prci "$REPO_FILE"
 set -o pipefail
 if docker run --security-opt seccomp=unconfined \
                 --rm -it \
