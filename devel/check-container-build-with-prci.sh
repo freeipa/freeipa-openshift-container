@@ -99,7 +99,7 @@ function patch-dockerfile
         if [[ "${line}" =~ ^FROM\ * ]]
         then
             printf "%s\n" "${line}" >> "${dockerfilepath}"
-            printf "COPY \"%s\" \"%s\"" "${repofilepath}" "/etc/yum.repos.d/freeipa-development.repo" >> "${dockerfilepath}"
+            printf "COPY \"%s\" \"%s\"\n" "${repofilepath}" "/etc/yum.repos.d/freeipa-development.repo" >> "${dockerfilepath}"
         else
             printf "%s\n" "${line}" >> "${dockerfilepath}"
         fi
