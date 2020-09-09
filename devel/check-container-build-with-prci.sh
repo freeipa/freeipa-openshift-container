@@ -145,12 +145,18 @@ esac
 cp -f "${item}" "Dockerfile.prci"
 patch-dockerfile Dockerfile.prci devel/freeipa-prci.repo
 set -o pipefail
-if docker run --security-opt seccomp=unconfined \
+if [ -z "$BUILDAH_DIRECT" ] ; then
+    docker run --security-opt seccomp=unconfined \
                 --rm -it \
                 --volume "$PWD:/data:z" \
                 --workdir "/data" \
                 quay.io/buildah/stable \
                 buildah --storage-driver vfs bud --isolation chroot -f Dockerfile.prci .
+else
+    buildah --storage-driver vfs bud --layers --isolation chroot -f Dockerfile.prci .
+fi
+
+if [ "$?" -eq 0 ]
 then
     yield "INFO:$( basename "${item}" ) build properly"
     successed_files+=( "$( basename "${item}" )")
