@@ -6,11 +6,11 @@
 #
 # Usage:
 #
-#   ARTIFACT_HASH="c8dbfc76-c4eb-11ea-88a6-fa163e90bd6d" ./devel/check-container-build-with-prci.sh
+#   ARTIFACT_HASH="c8dbfc76-c4eb-11ea-88a6-fa163e90bd6d" ./devel/build-from-repo.sh
 #
 #   or
 #
-#   COPR_REPO=https://.../user-project-fedora-32.repo ./devel/check-container-build-with-prci.sh
+#   COPR_REPO=https://.../user-project-fedora-32.repo ./devel/build-from-repo.sh
 ##
 
 ARTIFACT_HASH_FILENAME="artifact-hash.txt"
