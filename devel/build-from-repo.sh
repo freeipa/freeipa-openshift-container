@@ -15,6 +15,7 @@
 
 ARTIFACT_HASH_FILENAME="artifact-hash.txt"
 LATEST_FEDORA="fedora-32"
+DOCKERFILE=Dockerfile.devel
 
 function yield
 {
@@ -180,8 +181,8 @@ case "$SYSTEM" in
         die "No supported ${item}"
         ;;
 esac
-cp -f "${item}" "Dockerfile.prci"
-patch-dockerfile Dockerfile.prci "$REPO_FILE"
+cp -f "${item}" "$DOCKERFILE"
+patch-dockerfile "$DOCKERFILE" "$REPO_FILE"
 set -o pipefail
 if [ -z "$BUILDAH_DIRECT" ] ; then
     echo "Executing buildah in a container"
@@ -190,10 +191,10 @@ if [ -z "$BUILDAH_DIRECT" ] ; then
                 --volume "$PWD:/data:z" \
                 --workdir "/data" \
                 quay.io/buildah/stable \
-                buildah --storage-driver vfs bud --isolation chroot -f Dockerfile.prci .
+                buildah --storage-driver vfs bud --isolation chroot -f "$DOCKERFILE" .
 else
     echo "Executing buildah locally"
-    buildah bud --layers --isolation chroot -f Dockerfile.prci .
+    buildah bud --layers --isolation chroot -f "$DOCKERFILE" .
 fi
 
 if [ "$?" -eq 0 ]
@@ -204,4 +205,4 @@ else
     yield "ERROR:$( basename "${item}" ) failed to build"
     failured_files+=( "$( basename "${item}" )")
 fi
-rm -f Dockerfile.prci
+rm -f "$DOCKERFILE"
