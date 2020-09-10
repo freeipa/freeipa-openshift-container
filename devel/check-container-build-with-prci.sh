@@ -156,6 +156,7 @@ cp -f "${item}" "Dockerfile.prci"
 patch-dockerfile Dockerfile.prci "$REPO_FILE"
 set -o pipefail
 if [ -z "$BUILDAH_DIRECT" ] ; then
+    echo "Executing buildah in a container"
     docker run --security-opt seccomp=unconfined \
                 --rm -it \
                 --volume "$PWD:/data:z" \
@@ -163,7 +164,8 @@ if [ -z "$BUILDAH_DIRECT" ] ; then
                 quay.io/buildah/stable \
                 buildah --storage-driver vfs bud --isolation chroot -f Dockerfile.prci .
 else
-    buildah --storage-driver vfs bud --layers --isolation chroot -f Dockerfile.prci .
+    echo "Executing buildah locally"
+    buildah bud --layers --isolation chroot -f Dockerfile.prci .
 fi
 
 if [ "$?" -eq 0 ]
