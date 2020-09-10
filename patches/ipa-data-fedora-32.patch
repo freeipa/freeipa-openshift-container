@@ -40,28 +40,6 @@
  
  
  paths = RedHatPathNamespace()
---- /usr/share/ipa/ipaca_default.ini	2019-04-25 12:35:58.000000000 +0000
-+++ /usr/share/ipa/ipaca_default.ini	2019-05-06 17:41:27.278583996 +0000
-@@ -24,7 +24,7 @@
- 
- # Dogtag defaults
- pki_instance_name=pki-tomcat
--pki_configuration_path=/etc/pki
-+pki_configuration_path=/data/etc/pki
- pki_instance_configuration_path=%(pki_configuration_path)s/%(pki_instance_name)s
- 
- pki_admin_cert_file=%(pki_client_dir)s/ca_admin.cert
---- /usr/libexec/ipa/ipa-httpd-pwdreader	2018-10-05 18:30:34.000000000 +0000
-+++ /usr/libexec/ipa/ipa-httpd-pwdreader	2018-11-16 07:17:55.235711545 +0000
-@@ -13,7 +13,7 @@
- fi
- 
- fname=${1/:/-}-$2
--pwdpath=/var/lib/ipa/passwds/$fname
-+pwdpath=/data/var/lib/ipa/passwds/$fname
- 
- # Make sure the values passed in do not contain path information
- checkpath=$(/usr/bin/realpath -e ${pwdpath} 2>/dev/null)
 #
 # Prevent unneeded /etc/httpd/conf.modules.d/02-ipa-wsgi.conf from
 # being created in runtime
@@ -107,19 +85,6 @@
  	workgroup = SAMBA
  	security = user
  
---- /usr/lib/python3.8/site-packages/ipaserver/install/adtrustinstance.py	2019-08-14 15:37:23.000000000 +0000
-+++ /usr/lib/python3.8/site-packages/ipaserver/install/adtrustinstance.py	2019-11-19 08:34:09.065235181 +0000
-@@ -465,7 +465,9 @@
-         conf_fd.write('### Added by IPA Installer ###\n')
-         conf_fd.write('[global]\n')
-         conf_fd.write('debug pid = yes\n')
--        conf_fd.write('config backend = registry\n')
-+        conf_fd.write('state directory = /data/var/lib/samba\n')
-+        conf_fd.write('cache directory = /data/var/lib/samba\n')
-+        conf_fd.write('include = registry\n')
-         conf_fd.close()
- 
-     def __add_plugin_conf(self, name, plugin_cn, ldif_file):
 #
 # Workaround https://github.com/freeipa/freeipa-container/issues/313
 #
