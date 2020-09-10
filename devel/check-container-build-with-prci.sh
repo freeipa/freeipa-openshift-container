@@ -129,9 +129,23 @@ fi
 
 # Download repo file.  Later we will patch the Dockerfile to
 # copy it into the container.
+#
+# Because the build cache is mtime aware, to avoid spurious cache
+# invalidation we download the file elsewhere.  We only overwrite
+# the existing file if:
+#
+# - it doesn't exist yet
+# - the repo files differ
+# - explicitly told to replace it, via $FORCE env var
+#
 REPO_FILE=devel/freeipa.repo
-curl -s -o "$REPO_FILE" "$REPO_URL" \
+curl -s -o "$REPO_FILE".tmp "$REPO_URL" \
     || die "Error downloading repo file from '$REPO_URL'"
+if [ -n "$FORCE" -o ! -e "$REPO_FILE" ] || ! diff -q "$REPO_FILE".tmp "$REPO_FILE"; then
+    mv "$REPO_FILE".tmp "$REPO_FILE"
+else
+    rm "$REPO_FILE".tmp
+fi
 
 item="Dockerfile.$SYSTEM"
 [ -e "$item" ] || die "'$item' does not exist"
