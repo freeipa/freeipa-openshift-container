@@ -89,10 +89,24 @@ function patch-dockerfile
     true > "${dockerfilepath}"
     for line in "${lines[@]}"
     do
-        if [[ "${line}" =~ ^FROM\ * ]]
+        # After the initial dnf commands that upgrade packages and
+        # install FreeIPA, inject the repo file and upgrade packages.
+        #
+        # Unfortunately we cannot restrict the operation to only the
+        # devel repo, because the devel packages could introduce new
+        # dependencies.  So although we just did a 'dnf clean all',
+        # we now have to download all the repo metadata again.  I
+        # don't see a good workaround that keeps the initial package
+        # upgrade/install as a standalone step (important for
+        # caching) while also keeping the layer size small).
+        #
+        # avoid (re)downloading other repo content that was already
+        # cleaned.
+        if [[ "${line}" =~ "dnf clean all" ]]
         then
             printf "%s\n" "${line}" >> "${dockerfilepath}"
             printf "COPY \"%s\" \"%s\"\n" "${repofilepath}" "/etc/yum.repos.d/freeipa-development.repo" >> "${dockerfilepath}"
+            printf "RUN dnf upgrade -y && dnf clean all\n" >> "${dockerfilepath}"
         else
             printf "%s\n" "${line}" >> "${dockerfilepath}"
         fi
