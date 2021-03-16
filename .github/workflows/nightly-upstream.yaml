@@ -1,0 +1,83 @@
+name: Build nightly upstream
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 22 * * *'
+
+env:
+  TRAVIS: yes-similar-ubuntu-environment
+jobs:
+  build:
+    name: Build image
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ fedora-rawhide, fedora-33, fedora-32, centos-8 ]
+    env:
+      COPR_REPO: https://copr.fedorainfracloud.org/coprs/g/freeipa/freeipa-master-nightly/repo/${{ matrix.os }}/group_freeipa-freeipa-master-nightly-${{ matrix.os }}.repo
+      QUAY_EXPIRATION: 2w
+      IMAGE_TAG_BASE: local/freeipa-server:nightly-upstream-
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build image
+        run: ./devel/build-from-repo.sh
+      - name: File issue if building image failed
+        if: ${{ failure() && github.event_name == 'schedule' }}
+        run: |
+          curl -s 'https://api.github.com/repos/${{ github.repository }}/issues?labels=image-build-fail' | jq -r '.[0].state' | grep open \
+          || curl -s -X POST \
+            --url https://api.github.com/repos/${{ github.repository }}/issues \
+            -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            -H 'Accept: application/vnd.github.v3+json' \
+            -d '{
+              "title": "Nightly upstream image build for ${{ matrix.os }} failed on '$( date -I )'",
+              "body": "This issue was automatically created by GitHub Action\n\nhttps://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}.\n",
+              "labels": ["image-build-fail" ]
+              }'
+      - name: Create directory for artifacts
+        run: mkdir nightly-upstream-freeipa-server-${{ matrix.os }}
+      - name: Save image
+        run: docker save ${IMAGE_TAG_BASE}${{ matrix.os }} | gzip > nightly-upstream-freeipa-server-${{ matrix.os }}/nightly-upstream-freeipa-server-${{ matrix.os }}.tar.gz
+      - name: Get FreeIPA version
+        run: docker run --rm --entrypoint rpm ${IMAGE_TAG_BASE}${{ matrix.os }} -qf --qf '%{version}\n' /usr/sbin/ipa-server-install > nightly-upstream-freeipa-server-${{ matrix.os }}/nightly-upstream-freeipa-server-${{ matrix.os }}.version
+      - uses: actions/upload-artifact@v2
+        with:
+          name: nightly-upstream-freeipa-server-${{ matrix.os }}
+          path: nightly-upstream-freeipa-server-${{ matrix.os }}
+
+  push-after-success:
+    name: Push images to nightly registries
+    runs-on: ubuntu-20.04
+    needs: [ build ]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ fedora-rawhide, fedora-33, fedora-32, centos-8 ]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/openshift-4.x'
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: nightly-upstream-freeipa-server-${{ matrix.os }}
+      - name: Prepare authentication file
+        run: |
+          cat > auth.json << 'EOF'
+          ${{ secrets.REGISTRY_CREDENTIALS_FILE }}
+          EOF
+      - name: Copy the images to registries
+        run: |
+          while read r ; do
+            for f in nightly-upstream-freeipa-server-*.tar.gz ; do j=${f%.tar.gz} ;
+              echo Copying $j to ${r#docker://}
+              source="docker-archive:$f"
+              target="$r:${j%-}-$( cat $j.version )"
+              target="${target%%+*}"
+              skopeo copy --authfile=auth.json "${source}" "${target}"
+              echo Tagged as ${j#nightly-upstream-freeipa-server-}-$( cat $j.version )
+            done
+          done << 'EOF'
+          ${{ secrets.REGISTRY_TARGET_LIST }}
+          EOF
