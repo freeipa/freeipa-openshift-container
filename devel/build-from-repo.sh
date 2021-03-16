@@ -14,8 +14,11 @@
 ##
 
 ARTIFACT_HASH_FILENAME="artifact-hash.txt"
-LATEST_FEDORA="fedora-32"
-DOCKERFILE=Dockerfile.devel
+LATEST_FEDORA="fedora-33"
+DOCKERFILE="$( mktemp Dockerfile.XXXX )"
+QUAY_EXPIRATION="${QUAY_EXPIRATION:-never}"
+IMAGE_TAG_BASE="${IMAGE_TAG_BASE:-local/freeipa-server:}"
+IMAGE_BUILDER="${IMAGE_BUILDER:-docker}"
 
 function yield
 {
@@ -55,8 +58,11 @@ function print-build-system
         "fedora-latest" )
             printf "%s\n" "${LATEST_FEDORA}"
             ;;
-        "fedora-31" \
-        | "fedora-32" )
+        "centos-8" \
+        | "fedora-31" \
+        | "fedora-32" \
+        | "fedora-33" \
+        | "fedora-rawhide" )
             printf "%s\n" "${build_system}"
             ;;
         * )
@@ -105,9 +111,13 @@ function patch-dockerfile
         # cleaned.
         if [[ "${line}" =~ "dnf clean all" ]]
         then
-            printf "%s\n" "${line}" >> "${dockerfilepath}"
-            printf "COPY \"%s\" \"%s\"\n" "${repofilepath}" "/etc/yum.repos.d/freeipa-development.repo" >> "${dockerfilepath}"
-            printf "RUN dnf upgrade -y && dnf clean all\n" >> "${dockerfilepath}"
+            {
+                printf "%s\n" "${line}"
+                printf "ARG quay_expiration=never\n"
+                printf "LABEL quay.expires-after=\${quay_expiration}\n"
+                printf "COPY \"%s\" \"%s\"\n" "${repofilepath}" "/etc/yum.repos.d/freeipa-development.repo"
+                printf "RUN dnf upgrade -y && dnf clean all\n"
+            } >> "${dockerfilepath}"
         else
             printf "%s\n" "${line}" >> "${dockerfilepath}"
         fi
@@ -126,20 +136,20 @@ function clone-repository
 
 [ ! -e .git ] && die "This script should be used from the repository root path"
 
-if [ -n "$ARTIFACT_HASH" -o -e "$ARTIFACT_HASH_FILENAME" ]; then
-    ARTIFACT_HASH="${ARTIFACT_HASH-"$( cat "$ARTIFACT_HASH_FILENAME" )"}"
+if [ -n "${ARTIFACT_HASH}" ] || [ -e "${ARTIFACT_HASH_FILENAME}" ]; then
+    ARTIFACT_HASH="${ARTIFACT_HASH-"$( cat "${ARTIFACT_HASH_FILENAME}" )"}"
     REPO_URL="http://freeipa-org-pr-ci.s3-website.eu-central-1.amazonaws.com/jobs/${ARTIFACT_HASH}/rpms/freeipa-prci.repo"
-    SYSTEM=$(print-build-system "$ARTIFACT_HASH")
-elif [ -n "$COPR_REPO" ]; then
-    REPO_URL="$COPR_REPO"
+    SYSTEM="$( print-build-system "${ARTIFACT_HASH}" )"
+elif [ -n "${COPR_REPO}" ]; then
+    REPO_URL="${COPR_REPO}"
 
     # Derive SYSTEM from repo URL.
     #
     # This matches the path scheme for copr.fedorainfracloud.org, but may
     # not be correct for copr.devel.redhat.com or other COPR instances.
-    SYSTEM=$(basename $(dirname "$REPO_URL"))
+    SYSTEM="$( basename "$( dirname "${REPO_URL}" )" )"
 else
-    die "Must create $ARTIFACT_HASH_FILENAME, or specify ARTIFACT_HASH or COPR_REPO"
+    die "Must create ${ARTIFACT_HASH_FILENAME}, or specify ARTIFACT_HASH or COPR_REPO"
 fi
 
 # Download repo file.  Later we will patch the Dockerfile to
@@ -154,21 +164,22 @@ fi
 # - explicitly told to replace it, via $FORCE env var
 #
 REPO_FILE=devel/freeipa.repo
-curl -s -o "$REPO_FILE".tmp "$REPO_URL" \
-    || die "Error downloading repo file from '$REPO_URL'"
-if [ -n "$FORCE" -o ! -e "$REPO_FILE" ] || ! diff -q "$REPO_FILE".tmp "$REPO_FILE"; then
-    mv "$REPO_FILE".tmp "$REPO_FILE"
+curl -s -o "${REPO_FILE}".tmp "${REPO_URL}" \
+    || die "Error downloading repo file from '${REPO_URL}'"
+if [ -n "${FORCE}" ] || [ ! -e "${REPO_FILE}" ] || ! diff -q "${REPO_FILE}".tmp "${REPO_FILE}"; then
+    mv "${REPO_FILE}".tmp "${REPO_FILE}"
 else
-    rm "$REPO_FILE".tmp
+    rm "${REPO_FILE}".tmp
 fi
 
-item="Dockerfile.$SYSTEM"
-[ -e "$item" ] || die "'$item' does not exist"
+item="Dockerfile.${SYSTEM}"
+[ -e "${item}" ] || die "'${item}' does not exist"
 successed_files=()
 failured_files=()
 
-case "$SYSTEM" in
+case "${SYSTEM}" in
     "fedora-rawhide" \
+    | "fedora-33" \
     | "fedora-32" \
     | "fedora-31" \
     | "fedora-30" \
@@ -181,28 +192,46 @@ case "$SYSTEM" in
         die "No supported ${item}"
         ;;
 esac
-cp -f "${item}" "$DOCKERFILE"
-patch-dockerfile "$DOCKERFILE" "$REPO_FILE"
+cp -f "${item}" "${DOCKERFILE}"
+patch-dockerfile "${DOCKERFILE}" "${REPO_FILE}"
 set -o pipefail
-if [ -z "$BUILDAH_DIRECT" ] ; then
-    echo "Executing buildah in a container"
-    docker run --security-opt seccomp=unconfined \
-                --rm -it \
-                --volume "$PWD:/data:z" \
-                --workdir "/data" \
-                quay.io/buildah/stable \
-                buildah --storage-driver vfs bud --isolation chroot -f "$DOCKERFILE" .
-else
-    echo "Executing buildah locally"
-    buildah bud --layers --isolation chroot -f "$DOCKERFILE" .
-fi
+IMAGE_TAG="${IMAGE_TAG_BASE}${SYSTEM}"
+case "${IMAGE_BUILDER}" in
+    docker )
+        docker build -t "${IMAGE_TAG}" \
+                     --build-arg "quay_expiration=${QUAY_EXPIRATION}" \
+                     -f "${DOCKERFILE}" .
+        ;;
+    podman )
+        podman build -t "${IMAGE_TAG}" \
+                     --build-arg "quay_expiration=${QUAY_EXPIRATION}" \
+                     -f "${DOCKERFILE}" .
+        ;;
+    kaniko )
+        /kaniko/executor --destination="${IMAGE_TAG}" \
+                         --build-arg "quay_expiration=${QUAY_EXPIRATION}" \
+                         --dockerfile="${DOCKERFILE}" \
+                         --context "${PWD}"
+        ;;
+    buildah )
+        buildah bud -t "${IMAGE_TAG}" \
+                    --build-arg "quay_expiration=${QUAY_EXPIRATION}" \
+                    --layers \
+                    --isolation chroot \
+                    -f "${DOCKERFILE}" .
+        ;;
+    * )
+        die "${IMAGE_BUILDER} not supported"
+        ;;
+esac
 
 if [ "$?" -eq 0 ]
 then
     yield "INFO:$( basename "${item}" ) build properly"
+    yield "INFO:Now you can use the '${IMAGE_TAG}' image"
     successed_files+=( "$( basename "${item}" )")
 else
     yield "ERROR:$( basename "${item}" ) failed to build"
     failured_files+=( "$( basename "${item}" )")
 fi
-rm -f "$DOCKERFILE"
+rm -f "${DOCKERFILE}"
