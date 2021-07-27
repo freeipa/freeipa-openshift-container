@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ fedora-rawhide, fedora-33, fedora-32, centos-8 ]
+        os: [ fedora-rawhide, fedora-34, fedora-33, fedora-32, centos-8 ]
     continue-on-error: ${{ matrix.os == 'fedora-rawhide' }}
     env:
       COPR_REPO: https://copr.fedorainfracloud.org/coprs/g/freeipa/freeipa-master-nightly/repo/${{ matrix.os }}/group_freeipa-freeipa-master-nightly-${{ matrix.os }}.repo
@@ -57,7 +57,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ fedora-rawhide, fedora-33, fedora-32, centos-8 ]
+        os: [ fedora-rawhide, fedora-34, fedora-33, fedora-32, centos-8 ]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/openshift-4.x'
     steps:
       - uses: actions/download-artifact@v2
