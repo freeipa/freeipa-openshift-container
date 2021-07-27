@@ -179,6 +179,7 @@ failured_files=()
 
 case "${SYSTEM}" in
     "fedora-rawhide" \
+    | "fedora-34" \
     | "fedora-33" \
     | "fedora-32" \
     | "fedora-31" \
