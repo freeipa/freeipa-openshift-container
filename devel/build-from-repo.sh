@@ -224,14 +224,18 @@ case "${IMAGE_BUILDER}" in
         die "${IMAGE_BUILDER} not supported"
         ;;
 esac
+STATUS=$?
 
-if [ "$?" -eq 0 ]
+rm -f "${DOCKERFILE}"
+
+if [ "$STATUS" -eq 0 ]
 then
     yield "INFO:$( basename "${item}" ) build properly"
     yield "INFO:Now you can use the '${IMAGE_TAG}' image"
     successed_files+=( "$( basename "${item}" )")
+    exit 0
 else
     yield "ERROR:$( basename "${item}" ) failed to build"
     failured_files+=( "$( basename "${item}" )")
+    exit 1
 fi
-rm -f "${DOCKERFILE}"
