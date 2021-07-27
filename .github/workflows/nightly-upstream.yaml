@@ -17,6 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ fedora-rawhide, fedora-33, fedora-32, centos-8 ]
+    continue-on-error: ${{ matrix.os == 'fedora-rawhide' }}
     env:
       COPR_REPO: https://copr.fedorainfracloud.org/coprs/g/freeipa/freeipa-master-nightly/repo/${{ matrix.os }}/group_freeipa-freeipa-master-nightly-${{ matrix.os }}.repo
       QUAY_EXPIRATION: 2w
