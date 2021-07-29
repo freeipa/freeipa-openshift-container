@@ -27,7 +27,7 @@ jobs:
       - name: Build image
         run: ./devel/build-from-repo.sh
       - name: File issue if building image failed
-        if: ${{ failure() && github.event_name == 'schedule' }}
+        if: ${{ failure() && github.event_name == 'schedule' && matrix.os != 'fedora-rawhide' }}
         run: |
           curl -s 'https://api.github.com/repos/${{ github.repository }}/issues?labels=image-build-fail' | jq -r '.[0].state' | grep open \
           || curl -s -X POST \
