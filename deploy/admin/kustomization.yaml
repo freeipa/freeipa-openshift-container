@@ -1,0 +1,12 @@
+# https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- serviceaccount.yaml
+- user.yaml
+- scc-freeipa.yaml
+- rbac-role.yaml
+- rbac-role-binding.yaml
+
+vars: []

@@ -1,0 +1,7 @@
+
+
+varReference:
+  - kind: Pod
+    path: spec/containers/args
+  - kind: Route
+    path: spec/host

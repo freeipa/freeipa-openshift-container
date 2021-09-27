@@ -1,0 +1,23 @@
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  annotations:
+    openshift.io/host.generated: "true"
+    # https://docs.openshift.com/container-platform/4.6/networking/routes/route-configuration.html
+    haproxy.router.openshift.io/timeout: "2s"
+    haproxy.router.openshift.io/hsts_header: max-age=31536000;includeSubDomains;preload
+  labels:
+    app: freeipa
+  name: freeipa
+spec:
+  host: $(IPA_SERVER_HOSTNAME)
+  port:
+    targetPort: https
+  to:
+    kind: Service
+    name: freeipa-web
+    weight: 100
+  tls:
+    termination: passthrough
+  wildcardPolicy: None

@@ -1,0 +1,16 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: freeipa
+  labels:
+    app: freeipa
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: freeipa
+subjects:
+  - kind: ServiceAccount
+    name: freeipa
+  - kind: User
+    name: freeipa

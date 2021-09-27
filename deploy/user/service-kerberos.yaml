@@ -1,0 +1,28 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: freeipa-kerberos
+  labels:
+    app: freeipa
+spec:
+  selector:
+    app: freeipa
+  ports:
+    - name: kerberos-tcp
+      port: 88
+      targetPort: 88
+      protocol: TCP
+    - name: kerberos-udp
+      port: 88
+      targetPort: 88
+      protocol: UDP
+
+    - name: kerberos-adm-tcp
+      port: 749
+      targetPort: 749
+      protocol: TCP
+    - name: kerberos-adm-udp
+      port: 749
+      targetPort: 749
+      protocol: UDP

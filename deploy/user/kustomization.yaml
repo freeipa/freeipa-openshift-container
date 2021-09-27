@@ -1,0 +1,45 @@
+# https://kubectl.docs.kubernetes.io/references/kustomize/kustomization/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+secretGenerator:
+- envs:
+  - admin-pass.txt
+  name: freeipa
+  type: Opaque
+
+configMapGenerator:
+- envs:
+  - config.txt
+  name: freeipa
+
+vars:
+- fieldref:
+    fieldPath: data.IPA_SERVER_HOSTNAME
+  name: IPA_SERVER_HOSTNAME
+  objref:
+    apiVersion: v1
+    kind: ConfigMap
+    name: freeipa
+- fieldref:
+    fieldPath: data.CA_SUBJECT
+  name: CA_SUBJECT
+  objref:
+    apiVersion: v1
+    kind: ConfigMap
+    name: freeipa
+
+resources:
+- pod.yaml
+- service-kerberos.yaml
+- service-web.yaml
+- service-ldap.yaml
+- route.yaml
+
+images:
+- name: workload
+  newName: quay.io/avisied0/freeipa-openshift-container
+  newTag: dev-86e689b
+
+configurations:
+- kustomizeconfig.yaml

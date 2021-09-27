@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: freeipa-web
+  labels:
+    app: freeipa
+spec:
+  selector:
+    app: freeipa
+  ports:
+    - name: https
+      port: 443
+      targetPort: https-tcp
+      protocol: TCP

@@ -1,0 +1,216 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: freeipa
+  labels:
+    app: freeipa
+  annotations:
+    openshift.io/scc: freeipa
+spec:
+  serviceAccountName: freeipa
+  # dnsConfig:
+  #   nameservers:
+  #     - 127.0.0.1
+  # hostAliases:
+  #   - ip: "127.0.0.1"
+  #     hostnames:
+  #       - avisiedo-freeipa.apps.permanent.idmocp.lab.eng.rdu2.redhat.com
+  #       - apps.permanent.idmocp.lab.eng.rdu2.redhat.com
+  containers:
+    - name: workload
+      # Change this to the image pushed to your container registry
+      # which is stored in your DOCKER_IMAGE env variable when building
+      # with 'make container-build container-push'
+      image: workload
+      resources:
+        limits:
+          cpu: "2"
+          memory: "3Gi"
+      imagePullPolicy: Always
+      # We need 'tty: true' to see the systemd traces
+      tty: true
+      securityContext:
+        privileged: false
+        capabilities:
+          drop:
+            - NET_RAW
+            - SYS_CHROOT
+            - AUDIT_CONTROL
+            - AUDIT_READ
+            - BLOCK_SUSPEND
+            - DAC_READ_SEARCH
+            - IPC_LOCK
+            - IPC_OWNER
+            - LEASE
+            - LINUX_IMMUTABLE
+            - MAC_ADMIN
+            - MAC_OVERRIDE
+            - NET_ADMIN
+            - NET_BROADCAST
+            - SYS_BOOT
+            - SYS_MODULE
+            - SYS_NICE
+            - SYS_PACCT
+            - SYS_PTRACE
+            - SYS_RAWIO
+            - SYS_TIME
+            - SYS_TTY_CONFIG
+            - SYSLOG
+            - WAKE_ALARM
+            - SYS_RAWIO
+            - MKNOD
+          add:
+            - "CHOWN"
+            - "FOWNER"
+            - "DAC_OVERRIDE"
+            - "SETUID"
+            - "SETGID"
+            - "KILL"
+            - "NET_BIND_SERVICE"
+
+            - "SETPCAP"
+            - "SETFCAP"
+
+            # No default capabilities
+            - "SYS_ADMIN"
+            - "SYS_RESOURCE"
+
+
+      #       - "NET_RAW"
+      #       - "SYS_CHROOT"
+            - "FSETID"
+
+      #       # No default capabilities
+      #       - "AUDIT_CONTROL"
+      #       - "AUDIT_READ"
+      #       - "BLOCK_SUSPEND"
+      #       - "DAC_READ_SEARCH"
+      #       - "IPC_LOCK"
+      #       - "IPC_OWNER"
+      #       - "LEASE"
+      #       - "LINUX_IMMUTABLE"
+      #       - "MAC_ADMIN"
+      #       - "MAC_OVERRIDE"
+      #       - "NET_ADMIN"
+      #       - "NET_BROADCAST"
+      #       - "SYS_BOOT"
+      #       - "SYS_MODULE"
+      #       - "SYS_NICE"
+      #       - "SYS_PACCT"
+      #       - "SYS_PTRACE"
+      #       - "SYS_RAWIO"
+      #       - "SYS_TIME"
+      #       - "SYS_TTY_CONFIG"
+      #       - "SYSLOG"
+      #       - "WAKE_ALARM"
+      #       - "SYS_RAWIO"
+
+      #       - "MKNOD"
+
+      #     add:
+      #       # Default capabilities
+      #       - "CHOWN"
+      #       - "FOWNER"
+      #       - "DAC_OVERRIDE"
+      #       - "SETUID"
+      #       - "SETGID"
+      #       - "KILL"
+      #       - "NET_BIND_SERVICE"
+
+      #       - "SETPCAP"
+      #       - "SETFCAP"
+
+      #       # No default capabilities
+      #       - "SYS_ADMIN"
+      #       - "SYS_RESOURCE"
+
+      command: ["/usr/local/sbin/init"]
+      args:
+      # - exit-on-finished
+      - no-exit
+      - ipa-server-install
+      - -U
+      # - --hostname
+      # - avisiedo-freeipa.apps.permanent.idmocp.lab.eng.rdu2.redhat.com
+      - --realm
+      - APPS.CRC.TESTING
+      - $(CA_SUBJECT)
+      - --no-ntp
+      - --no-sshd
+      - --no-ssh
+      # - --verbose
+      env:
+        - name: KUBERNETES
+          value: "1"
+        # - name: SYSTEMD_OPTS
+        #   value: "--show-status=true --unit=ipa-server-configure-first.service"
+        # - name: KRB5_TRACE
+        #   value: /dev/console
+        # - name: SYSTEMD_LOG_LEVEL
+        #   value: "debug"
+        # - name: SYSTEMD_LOG_TARGET
+        #   value: "console"
+        # - name: SYSTEMD_LOG_COLOR
+        #   value: "no"
+        # - name: INIT_WRAPPER
+        #   value: "1"
+        - name: DEBUG_TRACE
+          valueFrom:
+            configMapKeyRef:
+              name: freeipa
+              key: DEBUG_TRACE
+        - name: PASSWORD
+          valueFrom:
+            # configMapKeyRef:
+            secretKeyRef:
+              name: freeipa
+              key: PASSWORD
+        - name: IPA_SERVER_HOSTNAME
+          valueFrom:
+            configMapKeyRef:
+              name: freeipa
+              key: IPA_SERVER_HOSTNAME
+        # - name: IPA_SERVER_IP
+        #   valueFrom:
+        #     fieldRef:
+        #       fieldPath: status.podIP
+        - name: SYSTEMD_OFFLINE
+          value: "1"
+        - name: SYSTEMD_NSPAWN_API_VFS_WRITABLE
+          value: "network"
+      ports:
+        - name: http-tcp
+          protocol: TCP
+          containerPort: 80
+        - name: https-tcp
+          protocol: TCP
+          containerPort: 443
+
+      volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: systemd-tmp
+          mountPath: /tmp
+        - name: systemd-var-run
+          mountPath: /var/run
+        - name: systemd-var-dirsrv
+          mountPath: /var/run/dirsrv
+
+  volumes:
+    - name: data
+      emptyDir: {}
+    - name: systemd-var-run
+      emptyDir:
+        medium: "Memory"
+    - name: systemd-var-dirsrv
+      emptyDir:
+        medium: "Memory"
+    # ----------------------------
+    - name: systemd-run-rpcbind
+      emptyDir:
+        medium: "Memory"
+
+    - name: systemd-tmp
+      emptyDir:
+        medium: "Memory"
