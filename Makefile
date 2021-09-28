@@ -141,10 +141,10 @@ endif
 .PHONY: .generate-config
 .generate-config: deploy/user/config.txt .FORCE
 	@{ \
-		echo "DEBUG_TRACE=" ; \
+		echo "DEBUG_TRACE=$(DEBUG_TRACE)" ; \
   		echo "CLUSTER_DOMAIN=$(CLUSTER_DOMAIN)" ; \
   		echo "IPA_SERVER_HOSTNAME=$(IPA_SERVER_HOSTNAME)" ; \
-		echo "CA_SUBJECT"=$(CA_SUBJECT) ; \
+		echo "CA_SUBJECT=$(CA_SUBJECT)" ; \
 	} > deploy/user/config.txt
 
 # Deploy the application
