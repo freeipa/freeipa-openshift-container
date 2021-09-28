@@ -87,11 +87,11 @@ container-remove: .check-docker-image-not-empty .FORCE
 
 # Validate kubernetes object for the app
 .PHONY: app-validate
-app-validate: .check-logged-in-openshift validate-admin validate-user .FORCE
+app-validate: .check-logged-in-openshift .validate-admin .validate-user .FORCE
 
-validate-admin:
+.validate-admin:
 	kustomize build deploy/admin | oc create -f - --dry-run=client --validate=true
-validate-user:
+.validate-user:
 	kustomize build deploy/user | oc create -f - --dry-run=client --validate=true
 
 # .PHONY: container-deploy
