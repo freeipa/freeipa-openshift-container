@@ -1,10 +1,18 @@
 Available commands:
-    container-build
-    container-push
-    container-remove
+    container-build     Build the container image.
+    container-push      Push the container image; it requires you be logged in
+                        the registry where it will be published.
+    container-remove    Remove the container image.
+    container-shell     Open a bash shell using the built container.
 
-    app-create
-    app-delete
-    app-open-console
-    app-print-out
+    app-create          Create the configuration for deploying the container
+                        in Openshift. It requires to be logged in an Openshift
+                        cluster with cluster-admin credentials. It is
+                        recommended to create a new namespace before run this.
+    app-delete          Delete the configuration above.
+    app-open-console    Open the web console for freeipa; Check the logs to be
+                        sure that the initialization process finished
+                        successfully.
+    app-print-out       Print out the configuration that is created by the
+                        app-create rule.
 

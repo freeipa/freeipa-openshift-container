@@ -85,6 +85,10 @@ container-push: .check-docker-image-not-empty .FORCE
 container-remove: .check-docker-image-not-empty .FORCE
 	$(DOCKER) image rm $(IMG)
 
+.PHONY: container-shell
+container-shell:
+	$(DOCKER) run -it --entrypoint "" $(IMG) /bin/bash
+
 # Validate kubernetes object for the app
 .PHONY: app-validate
 app-validate: .check-logged-in-openshift .validate-admin .validate-user .FORCE
