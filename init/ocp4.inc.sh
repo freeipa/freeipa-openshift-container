@@ -1,16 +1,16 @@
 #!/bin/bash
 
-function ocp4_systemd_units_set_private_devices_off
+function ocp4_step_systemd_units_set_private_devices_off
 {
     sed -i s/^PrivateDevices=true/PrivateDevices=off/g /usr/lib/systemd/system/dbus-broker.service
 }
 
-function ocp4_systemd_units_set_private_system_off
+function ocp4_step_systemd_units_set_private_system_off
 {
     sed -i 's/^ProtectSystem=full/# ProtectSystem=full/g' /usr/lib/systemd/system/dbus-broker.service
 }
 
-function ocp4_systemd_units_set_private_tmp_off
+function ocp4_step_systemd_units_set_private_tmp_off
 {
     # Remove PrivateTmp=off
     sed -i s/^PrivateTmp=on/PrivateTmp=off/g /lib/systemd/system/dirsrv@.service
@@ -38,7 +38,7 @@ function ocp4_systemd_units_set_private_tmp_off
     sed -i s/^PrivateTmp=true/PrivateTmp=off/g /lib/systemd/system/httpd@.service
 }
 
-function ocp4_process_hostname
+function ocp4_step_process_hostname
 {
 	# Container is run without FQDN set, we try to "set" it in /etc/hosts
 	if ! grep -q "${IPA_SERVER_HOSTNAME}" /etc/hosts; then
@@ -53,9 +53,12 @@ function ocp4_process_hostname
     fi
 }
 
-tasks_exchange "container_process_hostname" \
-               "ocp4_process_hostname"
-tasks_add_after "ocp4_process_hostname" \
-                "ocp4_systemd_units_set_private_tmp_off" \
-                "ocp4_systemd_units_set_private_system_off" \
-                "ocp4_systemd_units_set_private_devices_off"
+tasks_helper_update_step \
+    "container_step_process_hostname" \
+    "ocp4_step_process_hostname"
+
+tasks_helper_add_after \
+    "ocp4_step_process_hostname" \
+    "ocp4_step_systemd_units_set_private_tmp_off" \
+    "ocp4_step_systemd_units_set_private_system_off" \
+    "ocp4_step_systemd_units_set_private_devices_off"

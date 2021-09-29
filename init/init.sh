@@ -10,6 +10,13 @@
 
 INIT_DIR=/usr/local/share/ipa-container
 
+set -e
+
 source "${INIT_DIR}/includes.inc.sh"
 
-tasks_execute "$@"
+# FIXME Remove line when debug finish
+tasks_helper_msg_info "task list:" "$(tasks_helper_list)"
+
+# set -xv
+
+tasks_helper_execute

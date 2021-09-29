@@ -5,14 +5,14 @@
 DATA=/data
 DATA_TEMPLATE=/data-template
 COMMAND=
+OPTIONS_FILE=
+DATA_OPTIONS_FILE=
+IPA_SERVER_HOSTNAME="${IPA_SERVER_HOSTNAME}"
+HOSTNAME="${HOSTNAME}"
+IPA_SERVER_IP="${IPA_SERVER_IP}"
+SYSTEMD_OPTS="${SYSTEMD_OPTS}"
 
-
-function container_enable_exit_immediately
-{
-    set -e
-}
-
-function container_enable_traces
+function container_step_enable_traces
 {
     test -z "$DEBUG_TRACE" || {
         if [ "${DEBUG_TRACE}" == "2" ]; then
@@ -26,25 +26,12 @@ function container_enable_traces
     }
 }
 
-function container_set_workdir_root
+function container_step_set_workdir_root
 {
     cd /
 }
 
-function ocp4_is_kubernetes
-{
-	# If KUBERNETES is not empty, return true
-	[ -n "${KUBERNETES}" ] && return 0
-
-	# This is true when 'automountServiceAccountToken: true'
-	# into the Pod spec
-	[ -e "/var/run/secrets/kubernetes.io/serviceaccount" ] && return 0
-
-	# Else return false
-	return 1
-}
-
-function container_exec_whitelist_commands
+function container_step_exec_whitelist_commands
 {
     case "${ARGS[1]}" in
         /bin/install.sh|/bin/uninstall.sh|/bin/bash|bash)
@@ -53,7 +40,7 @@ function container_exec_whitelist_commands
     esac
 }
 
-function container_clean_directories
+function container_step_clean_directories
 {
     for i in /run/* /tmp/var/tmp/* /tmp/* ; do
         if [ "$i" == '/run/secrets' ] ; then
@@ -70,33 +57,33 @@ function container_clean_directories
     done
 }
 
-function container_populate_volume_from_template
+function container_step_populate_volume_from_template
 {
     /usr/local/bin/populate-volume-from-template "/tmp"
 }
 
-function container_workaround_1372562
+function container_step_workaround_1372562
 {
     # Workaround 1373562
     mkdir -p "/run/lock"
 }
 
 
-function container_create_directories
+function container_step_create_directories
 {
     mkdir -p "/run/ipa" "/run/log" "${DATA}/var/log/journal"
 }
 
-function container_link_journal
+function container_step_link_journal
 {
     ln -s "${DATA}/var/log/journal" "/run/log/journal"
 }
 
-function container_do_check_terminate_await
+function container_step_do_check_terminate_await
 {
-    if [ "${ARGS[1]}" == 'no-exit' -o -n "${DEBUG_NO_EXIT}" ] ; then
-        if [ "$1" == 'no-exit' ] ; then
-            shift
+    if [ "${ARGS[0]}" == 'no-exit' -o -n "${DEBUG_NO_EXIT}" ] ; then
+        if [ "${ARGS[0]}" == 'no-exit' ] ; then
+            tasks_helper_shift_args
         fi
         # Debugging:  Don't power off if IPA install/upgrade fails
         # Create service drop-in to override `FailureAction`
@@ -104,40 +91,40 @@ function container_do_check_terminate_await
             mkdir -p /run/systemd/system/$i.d
             echo -e "[Service]\nFailureAction=none" > /run/systemd/system/$i.d/50-no-poweroff.conf
         done
-    elif [ "${ARGS[1]}" == 'exit-on-finished' ] ; then
+    elif [ "${ARGS[0]}" == 'exit-on-finished' ] ; then
         for i in ipa-server-configure-first.service ipa-server-upgrade.service; do
             mkdir -p /run/systemd/system/$i.d
             # We'd like to use SuccessAction=poweroff here but it's only
             # available in systemd 236.
             echo -e "[Service]\nExecStartPost=/usr/bin/systemctl poweroff" > /run/systemd/system/$i.d/50-success-poweroff.conf
         done
-        tasks_shift_args
+        tasks_helper_shift_args
     fi
 }
 
-function container_enable_tracing
+function container_step_enable_tracing
 {
     # Debugging:  Turn on tracing of ipa-server-configure-first script
     test -z "${DEBUG_TRACE}" || touch /run/ipa/debug-trace
 }
 
-function container_read_command
+function container_step_read_command
 {
-    if [ -n "${ARGS[1]}" ] ; then
-        case "${ARGS[1]}" in
+    if [ -n "${ARGS[0]}" ] ; then
+        case "${ARGS[0]}" in
             ipa-server-install)
-                COMMAND="${ARGS[1]}"
-                tasks_shift_args
+                COMMAND="${ARGS[0]}"
+                tasks_helper_shift_args
             ;;
             ipa-replica-install)
-                COMMAND="${ARGS[1]}"
-                tasks_shift_args
+                COMMAND="${ARGS[0]}"
+                tasks_helper_shift_args
             ;;
             -*)
                 :
             ;;
             *)
-            echo "Invocation error: command [$1] not supported." >&2
+            echo "Invocation error: command [${ARGS[0]}] not supported." >&2
             exit 8
         esac
     fi
@@ -151,7 +138,7 @@ function container_read_command
     fi
 }
 
-function container_check_ipa_server_install_opts
+function container_step_check_ipa_server_install_opts
 {
     if [ -n "${IPA_SERVER_INSTALL_OPTS}" ] && [ "${COMMAND}" != 'ipa-server-install' ] && [ "${COMMAND}" != 'ipa-replica-install' ] ; then
         echo "Invocation error: IPA_SERVER_INSTALL_OPTS should only be used with ipa-server-install or ipa-replica-install." >&2
@@ -159,13 +146,26 @@ function container_check_ipa_server_install_opts
     fi
 }
 
-function container_set_options_file_vars
+function container_step_set_options_file_vars
 {
     OPTIONS_FILE="/run/ipa/${COMMAND}-options"
     DATA_OPTIONS_FILE="${DATA}/${COMMAND}-options"
 }
 
-function container_fill_options_file
+function container_step_print_out_option_file_content
+{
+    if [ "${OPTIONS_FILE}" != "" ] && [ -e "${OPTIONS_FILE}" ]; then
+        tasks_helper_msg_info ">> OPTIONS_FILE content: ${OPTIONS_FILE}"
+        cat "${OPTIONS_FILE}"
+    fi
+
+    if [ "${DATA_OPTIONS_FILE}" != "" ] && [ -e "${DATA_OPTIONS_FILE}" ]; then
+        tasks_helper_msg_info ">> DATA_OPTIONS_FILE content: ${DATA_OPTIONS_FILE}"
+        cat "${DATA_OPTIONS_FILE}"
+    fi
+}
+
+function container_step_fill_options_file
 {
     touch "${OPTIONS_FILE}"
     chmod 660 "${OPTIONS_FILE}"
@@ -174,7 +174,7 @@ function container_fill_options_file
     done
 }
 
-function container_read_ipa_server_hostname_arg_from_options_file
+function container_step_read_ipa_server_hostname_arg_from_options_file
 {
     local _hostname_in_next
     _hostname_in_next=0
@@ -195,7 +195,7 @@ function container_read_ipa_server_hostname_arg_from_options_file
     done
 }
 
-function container_process_hostname
+function container_step_process_hostname
 {
 	if [ -f "${DATA}/hostname" ] ; then
 		STORED_HOSTNAME="$( cat "${DATA}/hostname" )"
@@ -232,8 +232,6 @@ function container_process_hostname
     fi
 }
 
-
-
 function container_helper_create_machine_id
 {
 	# only triggers when /etc/machine-id is a symlink and not bind-mounted into
@@ -250,7 +248,7 @@ function container_helper_create_machine_id
 	fi
 }
 
-function container_process_first_boot
+function container_step_process_first_boot
 {
     if ! [ -f /etc/ipa/ca.crt ] ; then
         if ! [ -f $DATA/ipa.csr ] ; then
@@ -290,7 +288,7 @@ function container_process_first_boot
     fi
 }
 
-function container_upgrade_version
+function container_step_upgrade_version
 {
     # Check the volume-version of the bind-mounted volume, upgrade if it's
     # different from the one in this image.
@@ -337,12 +335,12 @@ function container_upgrade_version
     fi
 }
 
-function container_print_out_timestamps_and_args
+function container_step_print_out_timestamps_and_args
 {
     echo "$(date) ${ARGS[0]} ${ARGS[*]}" >> /var/log/ipa-server-configure-first.log
 }
 
-function container_do_show_log_if_enabled
+function container_step_do_show_log_if_enabled
 {
     SHOW_LOG=${SHOW_LOG:-1}
     if [ "${SHOW_LOG}" == 1 ] ; then
@@ -362,14 +360,14 @@ function container_do_show_log_if_enabled
     fi
 }
 
-function container_print_out_env_if_debug
+function container_step_print_out_env_if_debug
 {
-    if [ "$DEBUG_TRACE" != "" ]; then
+    if [ "${DEBUG_TRACE}" != "" ]; then
         env
     fi
 }
 
-function container_exec_init
+function container_step_exec_init
 {
     # exec /usr/sbin/init --show-status=false $SYSTEMD_OPTS
     exec /usr/sbin/init --show-status=true ${SYSTEMD_OPTS}
@@ -377,24 +375,24 @@ function container_exec_init
     exit 10
 }
 
-tasks_add_tasks \
-    "container_enable_exit_immediately" \
-    "container_enable_traces" \
-    "container_set_workdir_root" \
-    "container_exec_whitelist_commands" \
-    "container_clean_directories" \
-    "container_populate_volume_from_template" \
-    "container_create_directories" \
-    "container_link_journal" \
-    "container_enable_tracing" \
-    "container_read_command" \
-    "container_check_ipa_server_install_opts" \
-    "container_set_options_file_vars" \
-    "container_fill_options_file" \
-    "container_read_ipa_server_hostname_arg_from_options_file" \
-    "container_process_hostname" \
-    "container_process_first_boot" \
-    "container_upgrade_version" \
-    "container_do_show_log_if_enabled" \
-    "container_print_out_env_if_debug" \
-    "container_exec_init"
+tasks_helper_add_tasks \
+    "container_step_enable_traces" \
+    "container_step_set_workdir_root" \
+    "container_step_exec_whitelist_commands" \
+    "container_step_clean_directories" \
+    "container_step_populate_volume_from_template" \
+    "container_step_create_directories" \
+    "container_step_link_journal" \
+    "container_step_do_check_terminate_await" \
+    "container_step_enable_tracing" \
+    "container_step_read_command" \
+    "container_step_check_ipa_server_install_opts" \
+    "container_step_set_options_file_vars" \
+    "container_step_fill_options_file" \
+    "container_step_read_ipa_server_hostname_arg_from_options_file" \
+    "container_step_process_hostname" \
+    "container_step_process_first_boot" \
+    "container_step_upgrade_version" \
+    "container_step_do_show_log_if_enabled" \
+    "container_step_print_out_env_if_debug" \
+    "container_step_exec_init"
