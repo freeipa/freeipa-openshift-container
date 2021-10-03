@@ -39,7 +39,7 @@ resources:
 images:
 - name: workload
   newName: quay.io/avisied0/freeipa-openshift-container
-  newTag: dev-86e689b
+  newTag: latest
 
 configurations:
 - kustomizeconfig.yaml
