@@ -9,7 +9,7 @@ REALM ?= APPS.$(shell echo $(CLUSTER_DOMAIN) | tr  '[:lower:]' '[:upper:]')
 NAMESPACE ?= $(shell oc project --short=true 2>/dev/null)
 IPA_SERVER_HOSTNAME ?= $(NAMESPACE).apps.$(CLUSTER_DOMAIN)
 TIMESTAMP ?= $(shell date +%Y%m%d%H%M%S)
-CA_SUBJECT := --ca-subject=CN=freeipa-$(TIMESTAMP), O=$(REALM)
+CA_SUBJECT := CN=freeipa-$(TIMESTAMP), O=$(REALM)
 
 # Set the container runtime interface
 ifneq (,$(shell bash -c "command -v podman 2>/dev/null"))
