@@ -53,12 +53,17 @@ function ocp4_step_process_hostname
     fi
 }
 
+OCP4_LIST_TASKS=()
+# +ocp4:begin-list
+OCP4_LIST_TASKS+=("ocp4_step_systemd_units_set_private_tmp_off")
+OCP4_LIST_TASKS+=("ocp4_step_systemd_units_set_private_system_off")
+OCP4_LIST_TASKS+=("ocp4_step_systemd_units_set_private_devices_off")
+# +ocp4:end-list
+
 tasks_helper_update_step \
     "container_step_process_hostname" \
     "ocp4_step_process_hostname"
 
 tasks_helper_add_after \
     "ocp4_step_process_hostname" \
-    "ocp4_step_systemd_units_set_private_tmp_off" \
-    "ocp4_step_systemd_units_set_private_system_off" \
-    "ocp4_step_systemd_units_set_private_devices_off"
+    "${OCP4_LIST_TASKS[@]}"

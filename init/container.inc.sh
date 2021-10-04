@@ -375,24 +375,29 @@ function container_step_exec_init
     exit 10
 }
 
-tasks_helper_add_tasks \
-    "container_step_enable_traces" \
-    "container_step_set_workdir_root" \
-    "container_step_exec_whitelist_commands" \
-    "container_step_clean_directories" \
-    "container_step_populate_volume_from_template" \
-    "container_step_create_directories" \
-    "container_step_link_journal" \
-    "container_step_do_check_terminate_await" \
-    "container_step_enable_tracing" \
-    "container_step_read_command" \
-    "container_step_check_ipa_server_install_opts" \
-    "container_step_set_options_file_vars" \
-    "container_step_fill_options_file" \
-    "container_step_read_ipa_server_hostname_arg_from_options_file" \
-    "container_step_process_hostname" \
-    "container_step_process_first_boot" \
-    "container_step_upgrade_version" \
-    "container_step_do_show_log_if_enabled" \
-    "container_step_print_out_env_if_debug" \
-    "container_step_exec_init"
+CONTAINER_LIST_TASKS=()
+
+# +container:begin-list
+CONTAINER_LIST_TASKS+=("container_step_enable_traces")
+CONTAINER_LIST_TASKS+=("container_step_set_workdir_root")
+CONTAINER_LIST_TASKS+=("container_step_exec_whitelist_commands")
+CONTAINER_LIST_TASKS+=("container_step_clean_directories")
+CONTAINER_LIST_TASKS+=("container_step_populate_volume_from_template")
+CONTAINER_LIST_TASKS+=("container_step_create_directories")
+CONTAINER_LIST_TASKS+=("container_step_link_journal")
+CONTAINER_LIST_TASKS+=("container_step_do_check_terminate_await")
+CONTAINER_LIST_TASKS+=("container_step_enable_tracing")
+CONTAINER_LIST_TASKS+=("container_step_read_command")
+CONTAINER_LIST_TASKS+=("container_step_check_ipa_server_install_opts")
+CONTAINER_LIST_TASKS+=("container_step_set_options_file_vars")
+CONTAINER_LIST_TASKS+=("container_step_fill_options_file")
+CONTAINER_LIST_TASKS+=("container_step_read_ipa_server_hostname_arg_from_options_file")
+CONTAINER_LIST_TASKS+=("container_step_process_hostname")
+CONTAINER_LIST_TASKS+=("container_step_process_first_boot")
+CONTAINER_LIST_TASKS+=("container_step_upgrade_version")
+CONTAINER_LIST_TASKS+=("container_step_do_show_log_if_enabled")
+CONTAINER_LIST_TASKS+=("container_step_print_out_env_if_debug")
+CONTAINER_LIST_TASKS+=("container_step_exec_init")
+# +container:end-list
+
+tasks_helper_add_tasks "${CONTAINER_LIST_TASKS[@]}"
