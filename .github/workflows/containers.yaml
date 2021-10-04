@@ -22,7 +22,6 @@ jobs:
         id: build-image
         uses: redhat-actions/buildah-build@v2
         with:
-          registry: quay.io/avisied0
           image: freeipa-openshift-container
           tags: latest ${{ github.sha }}
           dockerfiles: |
