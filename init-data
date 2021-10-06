@@ -121,9 +121,7 @@ if [ "$1" == 'no-exit' -o -n "$DEBUG_NO_EXIT" ] ; then
 elif [ "$1" == 'exit-on-finished' ] ; then
 	for i in ipa-server-configure-first.service ipa-server-upgrade.service; do
 		mkdir -p /run/systemd/system/$i.d
-		# We'd like to use SuccessAction=poweroff here but it's only
-		# available in systemd 236.
-		echo -e "[Service]\nExecStartPost=/usr/bin/systemctl poweroff" > /run/systemd/system/$i.d/50-success-poweroff.conf
+		ln -s /usr/lib/systemd/system/ipa-server-configure-first.service.d/service-success-poweroff.conf.template /run/systemd/system/$i.d/50-success-poweroff.conf
 	done
 	shift
 fi
@@ -159,7 +157,7 @@ if [ -z "$COMMAND" ] ; then
 	fi
 fi
 
-if [ -n "$IPA_SERVER_INSTALL_OPTS" ] && [ "$COMMAND" != 'ipa-server-install' ] && [ "$COMMAND" != 'ipa-replica-install' ] ; then
+if [ -n "$IPA_SERVER_INSTALL_OPTS" -a "$COMMAND" != 'ipa-server-install' -a "$COMMAND" != 'ipa-replica-install' ] ; then
 	echo "Invocation error: IPA_SERVER_INSTALL_OPTS should only be used with ipa-server-install or ipa-replica-install." >&2
 	exit 7
 fi
@@ -168,7 +166,7 @@ OPTIONS_FILE=/run/ipa/$COMMAND-options
 
 DATA_OPTIONS_FILE=$DATA/$COMMAND-options
 touch $OPTIONS_FILE
-chmod 660 $OPTIONS_FILE
+chmod 600 $OPTIONS_FILE
 for i in "$@" ; do
 	printf '%q\n' "$i" >> $OPTIONS_FILE
 done
@@ -180,7 +178,7 @@ for i in $( cat $OPTIONS_FILE ) ; do
 		break
 	fi
         case "$i" in
-                "--hostname" | "-h")
+                --hostname)
 			_HOSTNAME_IN_NEXT=true
                         ;;
                 --hostname=*)
@@ -244,14 +242,8 @@ fi
 function create_machine_id () {
 	# only triggers when /etc/machine-id is a symlink and not bind-mounted into
 	# the container by a container runtime.
-	if [ -L /etc/machine-id ] && [ ! -f $DATA/etc/machine-id ] ; then
-		# https://systemd.io/CONTAINER_INTERFACE/
-		# shellcheck disable=SC2154
-		if [ "${container_uuid}" != "" ]; then
-			echo "${container_uuid}" > "${DATA}/etc/machine-id"
-		else
-			dbus-uuidgen --ensure=$DATA/etc/machine-id
-		fi
+	if [ -L /etc/machine-id -a ! -f $DATA/etc/machine-id ] ; then
+		dbus-uuidgen --ensure=$DATA/etc/machine-id
 		chmod 444 $DATA/etc/machine-id
 	fi
 }
@@ -322,7 +314,7 @@ if [ -f "$DATA/build-id" ] ; then
 				fi
 			done
 		cat /etc/volume-data-list | while read i ; do
-			if [ -e $DATA_TEMPLATE$i ] && [ -e $DATA$i ] ; then
+			if [ -e $DATA_TEMPLATE$i -a -e $DATA$i ] ; then
 				chown --reference=$DATA_TEMPLATE$i $DATA$i
 				chmod --reference=$DATA_TEMPLATE$i $DATA$i
 			fi
@@ -334,10 +326,10 @@ if [ -f "$DATA/build-id" ] ; then
 	fi
 fi
 
-echo "$(date) $0 $*" >> /var/log/ipa-server-configure-first.log
+echo "$(date) $0 $@" >> /var/log/ipa-server-configure-first.log
 
 SHOW_LOG=${SHOW_LOG:-1}
-if [ "$SHOW_LOG" == 1 ] ; then
+if [ $SHOW_LOG == 1 ] ; then
 	for i in /var/log/ipa-server-configure-first.log /var/log/ipa-server-run.log ; do
 		if ! [ -f $i ] ; then
 			touch $i
@@ -353,9 +345,6 @@ if [ -n "$IPA_SERVER_IP" ] ; then
 	echo "$IPA_SERVER_IP" > /run/ipa/ipa-server-ip
 fi
 
-
-[ "$DEBUG_TRACE" != "" ] && env
-# exec /usr/sbin/init --show-status=false $SYSTEMD_OPTS
-exec /usr/sbin/init --show-status=true $SYSTEMD_OPTS
+exec /usr/sbin/init --show-status=false $SYSTEMD_OPTS
 
 exit 10

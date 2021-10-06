@@ -1,14 +1,23 @@
-FROM docker.io/freeipa/freeipa-server:fedora-34
+ARG PARENT_IMG=docker.io/freeipa/freeipa-server:fedora-34
+FROM ${PARENT_IMG}
 
-# COPY init-data /usr/local/sbin/init
-RUN mkdir -p /usr/local/share/ipa-container
-COPY init/ /usr/local/share/ipa-container
-RUN rm -vf /usr/local/sbin/init \
-    && ln -svf /usr/local/share/ipa-container/init.sh /usr/local/sbin/init
+# Just copy the ocp4 include shell file and parse the include list to 
+# add it at the end
+COPY ./init/ocp4.inc.sh /usr/local/share/ipa-container/ocp4.inc.sh
+RUN sed -i 's/^#.\+includes:end/source \"\$\{INIT_DIR\}\/ocp4\.inc\.sh\"\n&./g' /usr/local/share/ipa-container/includes.inc.sh
+
+# Prepare addons for data-template
+# COPY ./data-template/lib/systemd/system /data-template/lib/systemd/system
+# COPY ./volume-data-list /tmp/volume-data-list
+# RUN rm -rf /lib/systemd/system \
+#     && ln -svf /data/lib/systemd/system /lib/systemd/system \
+#     && cat /tmp/volume-data-list >> /etc/volume-data-list
+
+# COPY ./data-template/lib/systemd/system /data-template/lib/systemd/system
+# RUN rm -rf /lib/systemd/system \
+#     && ln -svf /data/lib/systemd/system /lib/systemd/system
 
 # Enable debug
 # COPY gssproxy.conf /data-template/etc/gssproxy/gssproxy.conf
-
-VOLUME /data
 
 ENTRYPOINT ["/usr/local/sbin/init"]

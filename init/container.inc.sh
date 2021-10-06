@@ -11,38 +11,40 @@ IPA_SERVER_HOSTNAME="${IPA_SERVER_HOSTNAME}"
 HOSTNAME="${HOSTNAME}"
 IPA_SERVER_IP="${IPA_SERVER_IP}"
 SYSTEMD_OPTS="${SYSTEMD_OPTS}"
+LOGFILE_IPA_SERVER_CONFIGURE_FIRST="/var/log/ipa-server-configure-first.log"
+LOGFILE_IPA_SERVER_RUN="/var/log/ipa-server-run.log"
 
 function container_step_enable_traces
 {
-    test -z "$DEBUG_TRACE" || {
-        if [ "${DEBUG_TRACE}" == "2" ]; then
-            export SYSTEMD_LOG_LEVEL="debug"
-            export SYSTEMD_LOG_TARGET="journal+console"
-            export SYSTEMD_LOG_COLOR="no"
-            export DEBUG=1
-        fi
-        # Turn on tracing of this script
-        set -x
-    }
+    # Turn on tracing of this script
+    test -z "$DEBUG_TRACE" || set -x
 }
 
-function container_step_set_workdir_root
+function container_step_set_workdir_to_root
 {
     cd /
 }
 
 function container_step_exec_whitelist_commands
 {
-    case "${ARGS[1]}" in
+    case "${ARGS[0]}" in
         /bin/install.sh|/bin/uninstall.sh|/bin/bash|bash)
             exec "${ARGS[@]}"
         ;;
     esac
 }
 
+function container_helper_clean_directories_print_out
+{
+    for i in /run/* /tmp/var/tmp/* /tmp/*; do
+        echo "$i"
+    done
+}
+export -f container_helper_clean_directories_print_out
+
 function container_step_clean_directories
 {
-    for i in /run/* /tmp/var/tmp/* /tmp/* ; do
+    for i in $( container_helper_clean_directories_print_out ); do
         if [ "$i" == '/run/secrets' ] ; then
             :
         elif [ -L "$i" -o -f "$i" ] ; then
@@ -57,9 +59,16 @@ function container_step_clean_directories
     done
 }
 
+function container_helper_invoke_populate_volume_from_template
+{
+    local directory="$1"
+    [ "${directory}" != "" ] || return 1
+    /usr/local/bin/populate-volume-from-template "${directory}"
+}
+
 function container_step_populate_volume_from_template
 {
-    /usr/local/bin/populate-volume-from-template "/tmp"
+    container_helper_invoke_populate_volume_from_template "/tmp"
 }
 
 function container_step_workaround_1372562
@@ -79,6 +88,22 @@ function container_step_link_journal
     ln -s "${DATA}/var/log/journal" "/run/log/journal"
 }
 
+function container_helper_write_no_poweroff_conf
+{
+    local output_file="$1"
+    echo -e "[Service]\nFailureAction=none" > "${output_file}"
+}
+
+# TODO Clean-up
+# function container_helper_write_poweroff_conf
+function container_helper_link_to_power_off
+{
+    local _symlink_path="$1"
+    # echo -e "[Service]\nExecStartPost=/usr/bin/systemctl poweroff" > "${output_file}"
+    local _target_path="/usr/lib/systemd/system/ipa-server-configure-first.service.d/service-success-poweroff.conf.template"
+    ln -s "${_target_path}" "${_symlink_path}"
+}
+
 function container_step_do_check_terminate_await
 {
     if [ "${ARGS[0]}" == 'no-exit' -o -n "${DEBUG_NO_EXIT}" ] ; then
@@ -89,17 +114,18 @@ function container_step_do_check_terminate_await
         # Create service drop-in to override `FailureAction`
         for i in ipa-server-configure-first.service ipa-server-upgrade.service; do
             mkdir -p /run/systemd/system/$i.d
-            echo -e "[Service]\nFailureAction=none" > /run/systemd/system/$i.d/50-no-poweroff.conf
+            container_helper_write_no_poweroff_conf "/run/systemd/system/$i.d/50-no-poweroff.conf"
         done
     elif [ "${ARGS[0]}" == 'exit-on-finished' ] ; then
         for i in ipa-server-configure-first.service ipa-server-upgrade.service; do
             mkdir -p /run/systemd/system/$i.d
             # We'd like to use SuccessAction=poweroff here but it's only
             # available in systemd 236.
-            echo -e "[Service]\nExecStartPost=/usr/bin/systemctl poweroff" > /run/systemd/system/$i.d/50-success-poweroff.conf
+            container_helper_link_to_power_off "/run/systemd/system/$i.d/50-success-poweroff.conf"
         done
         tasks_helper_shift_args
     fi
+    return 0
 }
 
 function container_step_enable_tracing
@@ -130,10 +156,10 @@ function container_step_read_command
     fi
 
     if [ -z "${COMMAND}" ] ; then
-        if [ -f $DATA/ipa-replica-install-options ] ; then
-            COMMAND=ipa-replica-install
+        if [ -f "${DATA}/ipa-replica-install-options" ] ; then
+            COMMAND="ipa-replica-install"
         else
-            COMMAND=ipa-server-install
+            COMMAND="ipa-server-install"
         fi
     fi
 }
@@ -168,7 +194,7 @@ function container_step_print_out_option_file_content
 function container_step_fill_options_file
 {
     touch "${OPTIONS_FILE}"
-    chmod 660 "${OPTIONS_FILE}"
+    chmod 600 "${OPTIONS_FILE}"
     for i in "${ARGS[@]}" ; do
         printf '%q\n' "$i" >> "${OPTIONS_FILE}"
     done
@@ -232,25 +258,44 @@ function container_step_process_hostname
     fi
 }
 
+function container_helper_is_a_symlink
+{
+    local _symlink="$1"
+    [ -L "${_symlink}" ]
+}
+
+function container_helper_is_a_file
+{
+    local _file="$1"
+    [ -f "${_file}" ]
+}
+
 function container_helper_create_machine_id
 {
 	# only triggers when /etc/machine-id is a symlink and not bind-mounted into
 	# the container by a container runtime.
-	if [ -L /etc/machine-id ] && [ ! -f $DATA/etc/machine-id ] ; then
-		# https://systemd.io/CONTAINER_INTERFACE/
-		# shellcheck disable=SC2154
-		if [ "${container_uuid}" != "" ]; then
-			echo "${container_uuid}" > "${DATA}/etc/machine-id"
-		else
-			dbus-uuidgen --ensure=$DATA/etc/machine-id
-		fi
-		chmod 444 $DATA/etc/machine-id
+	if container_helper_is_a_symlink "/etc/machine-id" \
+    && ! container_helper_is_a_file "${DATA}/etc/machine-id" ; then
+		# # https://systemd.io/CONTAINER_INTERFACE/
+		# # shellcheck disable=SC2154
+		# if [ "${container_uuid}" != "" ]; then
+		# 	echo "${container_uuid}" > "${DATA}/etc/machine-id"
+		# else
+		# 	dbus-uuidgen --ensure=${DATA}/etc/machine-id
+		# fi
+        dbus-uuidgen --ensure=${DATA}/etc/machine-id
+		chmod 444 "${DATA}/etc/machine-id"
 	fi
+}
+
+function container_helper_exist_ca_cert
+{
+    [ -f /etc/ipa/ca.crt ]
 }
 
 function container_step_process_first_boot
 {
-    if ! [ -f /etc/ipa/ca.crt ] ; then
+    if ! container_helper_exist_ca_cert ; then
         if ! [ -f $DATA/ipa.csr ] ; then
             # Do not refresh $DATA in the second stage of the external CA setup
             /usr/local/bin/populate-volume-from-template $DATA
@@ -309,6 +354,10 @@ function container_step_upgrade_version
             fi
         fi
     fi
+}
+
+function container_step_volume_update
+{
     if [ -f "$DATA/build-id" ] ; then
         if ! cmp -s $DATA/build-id $DATA_TEMPLATE/build-id ; then
             echo "FreeIPA server is already configured but with different version, volume update."
@@ -337,39 +386,49 @@ function container_step_upgrade_version
 
 function container_step_print_out_timestamps_and_args
 {
-    echo "$(date) ${ARGS[0]} ${ARGS[*]}" >> /var/log/ipa-server-configure-first.log
+    echo "$(date) ${ARGS[*]}" >> "${LOGFILE_IPA_SERVER_CONFIGURE_FIRST}"
+}
+
+function container_helper_print_out_log
+{
+    export LOGFILE_IPA_SERVER_CONFIGURE_FIRST LOGFILE_IPA_SERVER_RUN
+    (
+        trap '' SIGHUP
+        tail --silent -n 0 -f --retry "${LOGFILE_IPA_SERVER_CONFIGURE_FIRST}" "${LOGFILE_IPA_SERVER_RUN}" 2> /dev/null < /dev/null &
+    )
 }
 
 function container_step_do_show_log_if_enabled
 {
     SHOW_LOG=${SHOW_LOG:-1}
     if [ "${SHOW_LOG}" == 1 ] ; then
-        for i in /var/log/ipa-server-configure-first.log /var/log/ipa-server-run.log ; do
+        for i in "${LOGFILE_IPA_SERVER_CONFIGURE_FIRST}" "${LOGFILE_IPA_SERVER_RUN}" ; do
             if ! [ -f $i ] ; then
                 touch $i
             fi
         done
-        (
-        trap '' SIGHUP
-        tail --silent -n 0 -f --retry /var/log/ipa-server-configure-first.log /var/log/ipa-server-run.log 2> /dev/null < /dev/null &
-        )
-    fi
-
-    if [ -n "${IPA_SERVER_IP}" ] ; then
-        echo "${IPA_SERVER_IP}" > /run/ipa/ipa-server-ip
+        container_helper_print_out_log
     fi
 }
 
-function container_step_print_out_env_if_debug
+function container_step_save_ipa_server_ip_if_provided
 {
-    if [ "${DEBUG_TRACE}" != "" ]; then
-        env
+    if [ -n "${IPA_SERVER_IP}" ] ; then
+        printf "%s\n" "${IPA_SERVER_IP}" > /run/ipa/ipa-server-ip
     fi
 }
+
+# TODO Clean-up this step
+# function container_step_print_out_env_if_debug
+# {
+#     if [ "${DEBUG_TRACE}" != "" ]; then
+#         env
+#     fi
+# }
 
 function container_step_exec_init
 {
-    # exec /usr/sbin/init --show-status=false $SYSTEMD_OPTS
+    # exec /usr/sbin/init --show-status=false ${SYSTEMD_OPTS}
     exec /usr/sbin/init --show-status=true ${SYSTEMD_OPTS}
 
     exit 10
@@ -379,7 +438,7 @@ CONTAINER_LIST_TASKS=()
 
 # +container:begin-list
 CONTAINER_LIST_TASKS+=("container_step_enable_traces")
-CONTAINER_LIST_TASKS+=("container_step_set_workdir_root")
+CONTAINER_LIST_TASKS+=("container_step_set_workdir_to_root")
 CONTAINER_LIST_TASKS+=("container_step_exec_whitelist_commands")
 CONTAINER_LIST_TASKS+=("container_step_clean_directories")
 CONTAINER_LIST_TASKS+=("container_step_populate_volume_from_template")
@@ -395,8 +454,10 @@ CONTAINER_LIST_TASKS+=("container_step_read_ipa_server_hostname_arg_from_options
 CONTAINER_LIST_TASKS+=("container_step_process_hostname")
 CONTAINER_LIST_TASKS+=("container_step_process_first_boot")
 CONTAINER_LIST_TASKS+=("container_step_upgrade_version")
+CONTAINER_LIST_TASKS+=("container_step_volume_update")
 CONTAINER_LIST_TASKS+=("container_step_do_show_log_if_enabled")
-CONTAINER_LIST_TASKS+=("container_step_print_out_env_if_debug")
+CONTAINER_LIST_TASKS+=("container_step_save_ipa_server_ip_if_provided")
+# CONTAINER_LIST_TASKS+=("container_step_print_out_env_if_debug")
 CONTAINER_LIST_TASKS+=("container_step_exec_init")
 # +container:end-list
 

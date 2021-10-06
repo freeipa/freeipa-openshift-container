@@ -1,4 +1,6 @@
 deploy/user/admin-pass.txt
 deploy/user/config.txt
 private.mk
+data
+.venv
 

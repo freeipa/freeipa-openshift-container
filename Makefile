@@ -1,15 +1,27 @@
 include private.mk
 
+PARENT_IMG ?= docker.io/freeipa/freeipa-server:fedora-34
+
 # This makefile make life easier for playing with the different
 # proof of concepts.
 
 # Customizable cluster domain for deploying wherever we want
-CLUSTER_DOMAIN ?= $(shell kubectl get dnses.config.openshift.io/cluster -o json | jq -r '.spec.baseDomain' )
-REALM ?= APPS.$(shell echo $(CLUSTER_DOMAIN) | tr  '[:lower:]' '[:upper:]')
-NAMESPACE ?= $(shell oc project --short=true 2>/dev/null)
-IPA_SERVER_HOSTNAME ?= $(NAMESPACE).apps.$(CLUSTER_DOMAIN)
+# CLUSTER_DOMAIN ?= $(shell kubectl get dnses.config.openshift.io/cluster -o json | jq -r '.spec.baseDomain')
+CLUSTER_DOMAIN_CMD = kubectl get dnses.config.openshift.io/cluster -o json | jq -r '.spec.baseDomain'
+CLUSTER_DOMAIN ?= $(shell $(CLUSTER_DOMAIN_CMD))
+# REALM ?= APPS.$(shell echo $(CLUSTER_DOMAIN) | tr  '[:lower:]' '[:upper:]')
+REALM_CMD = echo "APPS.$(shell echo $(shell $(CLUSTER_DOMAIN_CMD)) | tr  '[:lower:]' '[:upper:]')"
+REALM ?= $(shell $(REALM_CMD))
+# NAMESPACE ?= $(shell oc project --short=true 2>/dev/null)
+NAMESPACE_CMD = oc project --short=true 2>/dev/null
+NAMESPACE ?= $(shell $(NAMESPACE_CMD))
+# IPA_SERVER_HOSTNAME ?= $(NAMESPACE).apps.$(CLUSTER_DOMAIN)
+IPA_SERVER_HOSTNAME_CMD = echo "$(NAMESPACE).apps.$(CLUSTER_DOMAIN)"
+IPA_SERVER_HOSTNAME ?= $(shell $(IPA_SERVER_HOSTNAME_CMD))
 TIMESTAMP ?= $(shell date +%Y%m%d%H%M%S)
 CA_SUBJECT := CN=freeipa-$(TIMESTAMP), O=$(REALM)
+
+TESTS_LIST ?= tasks,container,ocp4
 
 # Set the container runtime interface
 ifneq (,$(shell bash -c "command -v podman 2>/dev/null"))
@@ -73,7 +85,7 @@ endif
 # Build the container image
 .PHONY: container-build
 container-build: .check-docker-image-not-empty Dockerfile
-	$(DOCKER) build -t $(IMG) -f Dockerfile .
+	$(DOCKER) build -t $(IMG) -f Dockerfile --build-arg PARENT_IMG=$(PARENT_IMG) .
 
 # Push the container image to the container registry
 .PHONY: container-push
@@ -88,6 +100,28 @@ container-remove: .check-docker-image-not-empty .FORCE
 .PHONY: container-shell
 container-shell:
 	$(DOCKER) run -it --entrypoint "" $(IMG) /bin/bash
+
+.PHONY: container-run
+container-run:
+	[ -e data ] || mkdir -p data
+	-PORTS="-p 53:53/udp -p 53:53 -p 443:443 -p 389:389 -p 636:636 -p 88:88 -p 464:464 -p 88:88/udp -p 464:464/udp" \
+	#$(DOCKER) run -it -d -v "$(PWD)/data:/data:z" --name freeipa-server-container -h ipa.example.test $${PORTS} $(IMG) no-exit ipa-server-install -U -r EXAMPLE.TEST --hostname=ipa.example.test -p $(PASSWORD) --ds-password=$(PASSWORD) --admin-password=$(PASSWORD) --no-ntp --no-sshd --no-ssh
+	$(DOCKER) run -it -d --cap-add FSETID -v "$(PWD)/data:/data:z" --name freeipa-server-container -h ipa.example.test $${PORTS} $(IMG) no-exit ipa-server-install -U -r EXAMPLE.TEST --hostname=ipa.example.test -p $(PASSWORD) --ds-password=$(PASSWORD) --admin-password=$(PASSWORD) --no-ntp --no-sshd --no-ssh
+	# PORTS="-p 53:53/udp -p 53:53 -p 443:443 -p 389:389 -p 636:636 -p 88:88 -p 464:464 -p 88:88/udp -p 464:464/udp" \
+	# $(DOCKER) run -it -d -e IPA_SERVER_HOSTNAME=ipa.example.test -v "$(PWD)/data:/data:z" --name freeipa-server-container -h ipa.example.test $${PORTS} $(IMG) --help
+
+.PHONY: container-logs
+container-logs:
+	$(DOCKER) logs -f freeipa-server-container | less
+
+.PHONY: container-stop
+container-stop:
+	-$(DOCKER) container stop freeipa-server-container
+	-$(DOCKER) container rm freeipa-server-container
+
+.PHONY: container-clean
+container-clean: container-stop
+	sudo rm -rf data
 
 # Validate kubernetes object for the app
 .PHONY: app-validate
@@ -162,6 +196,7 @@ app-delete: .check-logged-in-openshift .FORCE
 
 .PHONY: app-print-out
 app-print-out: .generate-secret .generate-config .FORCE
+	@cd deploy/user; kustomize edit set image workload=$(IMG)
 	@kustomize build deploy/admin
 	@echo "---"
 	@kustomize build deploy/user
@@ -169,3 +204,24 @@ app-print-out: .generate-secret .generate-config .FORCE
 .PHONY: app-open-console
 app-open-console:
 	$(OPEN) https://$(NAMESPACE).apps.$(CLUSTER_DOMAIN)
+
+.PHONY: test
+test: install-test-deps test-unit test-e2e
+
+.PHONY: test-unit
+test-unit:
+	./test/libs/bats/bin/bats ./test/unit/ocp4.bats
+
+.PHONY: test-e2e
+test-e2e: .venv
+	source .venv/bin/activate; ansible-playbook ./test/e2e/run-tests.yaml 
+
+.PHONY: install-test-deps
+install-test-deps: .venv
+
+.venv:
+	python3 -m venv --copies .venv
+	source .venv/bin/activate; pip install --upgrade pip
+	source .venv/bin/activate ; \
+	  pip install --requirement test/e2e/requirements.txt ; \
+	  ansible-galaxy collection install containers.podman

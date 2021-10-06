@@ -5,4 +5,7 @@ deploy/
 private.mk
 .ci-pipeline
 .gitignore
+test/
+data/
+.venv/
 
