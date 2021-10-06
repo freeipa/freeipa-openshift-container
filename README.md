@@ -1,5 +1,7 @@
 # freeipa Openshift workload
 
+[![Dockerfile](https://github.com/avisiedo/freeipa-openshift-container-alternative/actions/workflows/hadolint.yaml/badge.svg)](https://github.com/avisiedo/freeipa-container-atlernative/actions/workflows/hadolint.yaml)
+
 This repository store the container definition that is used for provisioning
 Freeipa in Openshift.
 
