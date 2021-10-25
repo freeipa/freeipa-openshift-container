@@ -1,4 +1,4 @@
-ARG PARENT_IMG=docker.io/freeipa/freeipa-server:fedora-34
+ARG PARENT_IMG=quay.io/freeipa/freeipa-server:fedora-34
 
 # Ignore the rule because we are providing a customized parent image
 # that is passed as a build argument
@@ -9,19 +9,5 @@ FROM ${PARENT_IMG}
 # add it at the end
 COPY ./init/ocp4.inc.sh /usr/local/share/ipa-container/ocp4.inc.sh
 RUN sed -i 's/^#.\+includes:end/source \"\$\{INIT_DIR\}\/ocp4\.inc\.sh\"\n&./g' /usr/local/share/ipa-container/includes.inc.sh
-
-# Prepare addons for data-template
-# COPY ./data-template/lib/systemd/system /data-template/lib/systemd/system
-# COPY ./volume-data-list /tmp/volume-data-list
-# RUN rm -rf /lib/systemd/system \
-#     && ln -svf /data/lib/systemd/system /lib/systemd/system \
-#     && cat /tmp/volume-data-list >> /etc/volume-data-list
-
-# COPY ./data-template/lib/systemd/system /data-template/lib/systemd/system
-# RUN rm -rf /lib/systemd/system \
-#     && ln -svf /data/lib/systemd/system /lib/systemd/system
-
-# Enable debug
-# COPY gssproxy.conf /data-template/etc/gssproxy/gssproxy.conf
 
 ENTRYPOINT ["/usr/local/sbin/init"]

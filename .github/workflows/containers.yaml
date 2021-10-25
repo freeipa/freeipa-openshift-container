@@ -41,6 +41,8 @@ jobs:
           tags: ${{ steps.getTags.outputs.TAGS }}
           dockerfiles: |
             ./Dockerfile
+          build-args: |
+            PARENT_IMG=${{ secrets.PARENT_IMG }}
 
       - name: Push To quay.io
         id: push-to-quay

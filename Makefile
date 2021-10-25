@@ -1,6 +1,6 @@
 include private.mk
 
-PARENT_IMG ?= docker.io/freeipa/freeipa-server:fedora-34
+PARENT_IMG ?= quay.io/freeipa/freeipa-server:fedora-34
 
 # This makefile make life easier for playing with the different
 # proof of concepts.
