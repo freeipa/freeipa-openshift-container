@@ -23,13 +23,16 @@ jobs:
         run: |
           case "${GITHUB_REF}" in
             "refs/heads/main" )
-              echo ::set-output name=TAGS::latest $(git rev-parse --short HEAD)
+              echo ::set-output name=TAGS::latest
+              echo ::set-output name=QUAY_EXPIRATION::never
               ;;
             "refs/tags/v*" )
               echo ::set-output name=TAGS::$(echo $GITHUB_REF | cut -d / -f 3) $(git rev-parse --short HEAD)
+              echo ::set-output name=QUAY_EXPIRATION::never
               ;;
             * )
               echo ::set-output name=TAGS::$(git rev-parse --short HEAD)
+              echo ::set-output name=QUAY_EXPIRATION::2w
               ;;
           esac
 
@@ -43,6 +46,7 @@ jobs:
             ./Dockerfile
           build-args: |
             PARENT_IMG=${{ secrets.PARENT_IMG }}
+            QUAY_EXPIRATION=${{ steps.getTags.outputs.QUAY_EXPIRATION }}
 
       - name: Push To quay.io
         id: push-to-quay

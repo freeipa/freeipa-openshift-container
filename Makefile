@@ -85,7 +85,7 @@ endif
 # Build the container image
 .PHONY: container-build
 container-build: .check-docker-image-not-empty Dockerfile
-	$(DOCKER) build -t $(IMG) -f Dockerfile --build-arg PARENT_IMG=$(PARENT_IMG) .
+	$(DOCKER) build -t $(IMG) -f Dockerfile --build-arg PARENT_IMG=$(PARENT_IMG) --build-arg QUAY_EXPIRATION=1d .
 
 # Push the container image to the container registry
 .PHONY: container-push
