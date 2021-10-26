@@ -1,4 +1,8 @@
 ARG PARENT_IMG=docker.io/freeipa/freeipa-server:fedora-34
+
+# Ignore the rule because we are providing a customized parent image
+# that is passed as a build argument
+# hadolint ignore=DL3006
 FROM ${PARENT_IMG}
 
 # Just copy the ocp4 include shell file and parse the include list to 
