@@ -18,32 +18,29 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set tags for master
-        if: github.ref == 'refs/heads/master'
+      - name: Get tags
+        id: getTags
         env:
           TAGS: ${{ github.sha}} latest
-
-      - name: Set tags for no master but tags
-        if: github.ref != 'refs/heads/master' && ! startsWith(github.ref, 'refs/tags/v')
-        env:
-          TAGS: ${{ github.sha}}
-
-      - name: Get the version
-        if: startsWith(github.ref, 'refs/tags/v')
-        id: get_version
-        run: echo ::set-output name=VERSION::$(echo $GITHUB_REF | cut -d / -f 3)
-
-      - name: Set tags for tags
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          TAGS: ${{ github.sha }} ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          case "${GITHUB_REF}" in
+            "refs/heads/master" )
+              echo ::set-output name=TAGS::latest $(git rev-parse --short HEAD)
+              ;;
+            "refs/tags/v*" )
+              echo ::set-output name=TAGS::$(echo $GITHUB_REF | cut -d / -f 3) $(git rev-parse --short HEAD)
+              ;;
+            * )
+              echo ::set-output name=TAGS::$(git rev-parse --short HEAD)
+              ;;
+          esac
 
       - name: Build Image
         id: build-image
         uses: redhat-actions/buildah-build@v2
         with:
           image: freeipa-openshift-container
-          tags: ${{ env.TAGS }}
+          tags: ${{ steps.getTags.outputs.TAGS }}
           dockerfiles: |
             ./Dockerfile
 
