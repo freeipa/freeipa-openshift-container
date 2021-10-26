@@ -20,8 +20,6 @@ jobs:
 
       - name: Get tags
         id: getTags
-        env:
-          TAGS: ${{ github.sha}} latest
         run: |
           case "${GITHUB_REF}" in
             "refs/heads/master" )
