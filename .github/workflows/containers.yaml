@@ -22,7 +22,7 @@ jobs:
         id: getTags
         run: |
           case "${GITHUB_REF}" in
-            "refs/heads/master" )
+            "refs/heads/main" )
               echo ::set-output name=TAGS::latest $(git rev-parse --short HEAD)
               ;;
             "refs/tags/v*" )
