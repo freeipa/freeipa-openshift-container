@@ -54,6 +54,8 @@ $(error IMG_BASE is empty; export IMG_BASE=quay.io/namespace)
 endif
 IMG_TAG ?= dev-$(shell git rev-parse --short HEAD)
 IMG ?= $(IMG_BASE)/freeipa-openshift-container:$(IMG_TAG)
+QUAY_EXPIRATION ?= 1d
+CONTAINER_BUILD_FLAGS ?=
 
 default: help
 
@@ -85,7 +87,11 @@ endif
 # Build the container image
 .PHONY: container-build
 container-build: .check-docker-image-not-empty Dockerfile
-	$(DOCKER) build -t $(IMG) -f Dockerfile --build-arg PARENT_IMG=$(PARENT_IMG) --build-arg QUAY_EXPIRATION=1d .
+	$(DOCKER) build -t $(IMG) \
+		--build-arg PARENT_IMG=$(PARENT_IMG) \
+		--build-arg QUAY_EXPIRATION=$(QUAY_EXPIRATION) \
+		$(CONTAINER_BUILD_FLAGS) \
+		-f Dockerfile .
 
 # Push the container image to the container registry
 .PHONY: container-push
