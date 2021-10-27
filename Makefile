@@ -173,13 +173,13 @@ ifeq (,$(PASSWORD))
 endif
 
 .PHONY: .generate-secret
-.generate-secret: deploy/user/admin-pass.txt .FORCE
+.generate-secret: .FORCE
 	@{ \
 		echo "PASSWORD=$(PASSWORD)"; \
 	} > deploy/user/admin-pass.txt
 
 .PHONY: .generate-config
-.generate-config: deploy/user/config.txt .FORCE
+.generate-config: .FORCE
 	@{ \
 		echo "DEBUG_TRACE=$(DEBUG_TRACE)" ; \
   		echo "CLUSTER_DOMAIN=$(CLUSTER_DOMAIN)" ; \
@@ -189,7 +189,7 @@ endif
 
 # Deploy the application
 .PHONY: app-create
-app-create: .check-not-empty-password .check-cluster-domain-not-empty .check-docker-image-not-empty .check-logged-in-openshift app-validate .generate-secret .generate-config .FORCE
+app-create: .check-not-empty-password .check-cluster-domain-not-empty .check-docker-image-not-empty .check-logged-in-openshift .generate-secret .generate-config app-validate .FORCE
 	cd deploy/user; kustomize edit set image workload=$(IMG)
 	kustomize build deploy/admin | oc create -f -
 	kustomize build deploy/user | oc create -f - --as freeipa
