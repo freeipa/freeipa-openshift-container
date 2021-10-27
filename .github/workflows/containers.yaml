@@ -12,9 +12,21 @@ on:
     - cron: '0 22 * * *'
 
 jobs:
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Run Unit Tests
+        run: |
+          ./test/libs/bats/bin/bats ./test/unit/ocp4.bats
+
   build:
     name: Build Images
     runs-on: ubuntu-20.04
+    needs: [ test-unit ]
     steps:
       - uses: actions/checkout@v2
 
