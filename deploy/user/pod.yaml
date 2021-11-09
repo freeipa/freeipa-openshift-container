@@ -134,7 +134,7 @@ spec:
       # - --hostname
       # - avisiedo-freeipa.apps.permanent.idmocp.lab.eng.rdu2.redhat.com
       - --realm
-      - APPS.CRC.TESTING
+      - $(REALM)
       - --ca-subject=$(CA_SUBJECT)
       - --no-ntp
       - --no-sshd

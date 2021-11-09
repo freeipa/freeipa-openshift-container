@@ -28,6 +28,13 @@ vars:
     apiVersion: v1
     kind: ConfigMap
     name: freeipa
+- fieldref:
+    fieldPath: data.REALM
+  name: REALM
+  objref:
+    apiVersion: v1
+    kind: ConfigMap
+    name: freeipa
 
 resources:
 - pod.yaml
@@ -38,7 +45,7 @@ resources:
 
 images:
 - name: workload
-  newName: quay.io/avisied0/freeipa-openshift-container
+  newName: quay.io/freeipa/freeipa-openshift-container
   newTag: latest
 
 configurations:

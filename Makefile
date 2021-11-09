@@ -185,6 +185,7 @@ endif
   		echo "CLUSTER_DOMAIN=$(CLUSTER_DOMAIN)" ; \
   		echo "IPA_SERVER_HOSTNAME=$(IPA_SERVER_HOSTNAME)" ; \
 		echo "CA_SUBJECT=$(CA_SUBJECT)" ; \
+		echo "REALM=$(REALM)" ; \
 	} > deploy/user/config.txt
 
 # Deploy the application
