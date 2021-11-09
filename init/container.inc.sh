@@ -49,6 +49,9 @@ export -f container_helper_clean_directories_print_out
 function container_step_clean_directories
 {
     for i in $( container_helper_clean_directories_print_out ); do
+        # FIXME Fix this shellcheck hint when refactoring this
+        #       function for unit tests
+        # shellcheck disable=SC2166
         if [ "$i" == '/run/secrets' ] ; then
             :
         elif [ -L "$i" -o -f "$i" ] ; then
@@ -344,6 +347,9 @@ function container_step_process_first_boot
         fi
 
         if [ -n "$IPA_SERVER_INSTALL_OPTS" ] ; then
+            # FIXME Fix this shellcheck hint when refactoring this
+            #       function for unit tests
+            # shellcheck disable=SC2166
             if [ "$COMMAND" == 'ipa-server-install' -o "$COMMAND" = 'ipa-replica-install' ] ; then
                 echo "$IPA_SERVER_INSTALL_OPTS" >> $OPTIONS_FILE
             else
@@ -405,6 +411,9 @@ function container_step_volume_update
             echo "FreeIPA server is already configured but with different version, volume update."
             /usr/local/bin/populate-volume-from-template $DATA
             container_helper_create_machine_id
+            # FIXME Fix this shellcheck hint when refactoring this
+            #       function for unit tests
+            # shellcheck disable=SC2162
             sha256sum -c /etc/volume-data-autoupdate 2> /dev/null | awk -F': ' '/OK$/ { print $1 }' \
                 | while read f ; do
                     rm -f "$DATA/$f"
@@ -412,6 +421,9 @@ function container_step_volume_update
                         ( cd $DATA_TEMPLATE && tar cf - "./$f" ) | ( cd $DATA && tar xvf - )
                     fi
                 done
+            # FIXME Fix this shellcheck hint when refactoring this
+            #       function for unit tests
+            # shellcheck disable=SC2162,SC2002
             cat /etc/volume-data-list | while read i ; do
                 if [ -e "${DATA_TEMPLATE}$i" ] && [ -e "$DATA$i" ] ; then
                     chown "--reference=${DATA_TEMPLATE}$i" "${DATA}$i"
