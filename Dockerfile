@@ -1,4 +1,4 @@
-ARG PARENT_IMG=quay.io/freeipa/freeipa-server:fedora-34
+ARG PARENT_IMG=quay.io/freeipa/freeipa-server:fedora-35
 
 # Ignore the rule because we are providing a customized parent image
 # that is passed as a build argument
