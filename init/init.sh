@@ -12,6 +12,7 @@ INIT_DIR=/usr/local/share/ipa-container
 
 set -e
 
+# shellcheck disable=SC1091
 source "${INIT_DIR}/includes.inc.sh"
 
 # FIXME Remove line when debug finish

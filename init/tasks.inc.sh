@@ -6,6 +6,7 @@ declare -a ARGS_ORIGINAL
 declare -a TASKS_LIST
 
 ARGS=("$@")
+# shellcheck disable=SC2034
 ARGS_ORIGINAL=("$@")
 TASKS_LIST=()
 

@@ -7,9 +7,13 @@ DATA_TEMPLATE=/data-template
 COMMAND=
 OPTIONS_FILE=
 DATA_OPTIONS_FILE=
+# shellcheck disable=SC2269
 IPA_SERVER_HOSTNAME="${IPA_SERVER_HOSTNAME}"
+# shellcheck disable=SC2269
 HOSTNAME="${HOSTNAME}"
+# shellcheck disable=SC2269
 IPA_SERVER_IP="${IPA_SERVER_IP}"
+# shellcheck disable=SC2269
 SYSTEMD_OPTS="${SYSTEMD_OPTS}"
 LOGFILE_IPA_SERVER_CONFIGURE_FIRST="/var/log/ipa-server-configure-first.log"
 LOGFILE_IPA_SERVER_RUN="/var/log/ipa-server-run.log"
@@ -106,7 +110,7 @@ function container_helper_link_to_power_off
 
 function container_step_do_check_terminate_await
 {
-    if [ "${ARGS[0]}" == 'no-exit' -o -n "${DEBUG_NO_EXIT}" ] ; then
+    if [ "${ARGS[0]}" == 'no-exit' ] || utils_is_not_empty_str "${DEBUG_NO_EXIT}" ; then
         if [ "${ARGS[0]}" == 'no-exit' ] ; then
             tasks_helper_shift_args
         fi
@@ -136,7 +140,7 @@ function container_step_enable_tracing
 
 function container_step_read_command
 {
-    if [ -n "${ARGS[0]}" ] ; then
+    if utils_is_not_empty_str "${ARGS[0]}" ; then
         case "${ARGS[0]}" in
             ipa-server-install)
                 COMMAND="${ARGS[0]}"
@@ -155,8 +159,8 @@ function container_step_read_command
         esac
     fi
 
-    if [ -z "${COMMAND}" ] ; then
-        if [ -f "${DATA}/ipa-replica-install-options" ] ; then
+    if utils_is_empty_str "${COMMAND}" ; then
+        if utils_is_a_file "${DATA}/ipa-replica-install-options" ; then
             COMMAND="ipa-replica-install"
         else
             COMMAND="ipa-server-install"
@@ -166,7 +170,7 @@ function container_step_read_command
 
 function container_step_check_ipa_server_install_opts
 {
-    if [ -n "${IPA_SERVER_INSTALL_OPTS}" ] && [ "${COMMAND}" != 'ipa-server-install' ] && [ "${COMMAND}" != 'ipa-replica-install' ] ; then
+    if utils_is_not_empty_str "${IPA_SERVER_INSTALL_OPTS}" && [ "${COMMAND}" != 'ipa-server-install' ] && [ "${COMMAND}" != 'ipa-replica-install' ] ; then
         echo "Invocation error: IPA_SERVER_INSTALL_OPTS should only be used with ipa-server-install or ipa-replica-install." >&2
         exit 7
     fi
@@ -178,18 +182,19 @@ function container_step_set_options_file_vars
     DATA_OPTIONS_FILE="${DATA}/${COMMAND}-options"
 }
 
-function container_step_print_out_option_file_content
-{
-    if [ "${OPTIONS_FILE}" != "" ] && [ -e "${OPTIONS_FILE}" ]; then
-        tasks_helper_msg_info ">> OPTIONS_FILE content: ${OPTIONS_FILE}"
-        cat "${OPTIONS_FILE}"
-    fi
-
-    if [ "${DATA_OPTIONS_FILE}" != "" ] && [ -e "${DATA_OPTIONS_FILE}" ]; then
-        tasks_helper_msg_info ">> DATA_OPTIONS_FILE content: ${DATA_OPTIONS_FILE}"
-        cat "${DATA_OPTIONS_FILE}"
-    fi
-}
+# TODO Clean-up
+# function container_step_print_out_option_file_content
+# {
+#     if [ "${OPTIONS_FILE}" != "" ] && [ -e "${OPTIONS_FILE}" ]; then
+#         tasks_helper_msg_info ">> OPTIONS_FILE content: ${OPTIONS_FILE}"
+#         cat "${OPTIONS_FILE}"
+#     fi
+#
+#     if [ "${DATA_OPTIONS_FILE}" != "" ] && [ -e "${DATA_OPTIONS_FILE}" ]; then
+#         tasks_helper_msg_info ">> DATA_OPTIONS_FILE content: ${DATA_OPTIONS_FILE}"
+#         cat "${DATA_OPTIONS_FILE}"
+#     fi
+# }
 
 function container_step_fill_options_file
 {
@@ -200,11 +205,16 @@ function container_step_fill_options_file
     done
 }
 
+function container_helper_cat_options_file
+{
+    cat "${OPTIONS_FILE}"
+}
+
 function container_step_read_ipa_server_hostname_arg_from_options_file
 {
     local _hostname_in_next
     _hostname_in_next=0
-    for i in $( cat "${OPTIONS_FILE}" ) ; do
+    for i in $( container_helper_cat_options_file ) ; do
         if [ ${_hostname_in_next} -eq 1 ] ; then
             IPA_SERVER_HOSTNAME="$i"
             break
@@ -221,68 +231,82 @@ function container_step_read_ipa_server_hostname_arg_from_options_file
     done
 }
 
+function container_helper_cat_stored_hostname
+{
+    cat "${DATA}/hostname"
+}
+export -f container_helper_cat_stored_hostname
+
+function container_helper_exist_stored_hostname
+{
+    utils_is_a_file "${DATA}/hostname"
+}
+
+function container_helper_set_hosts_file
+{
+    local _hostname="$1"
+    local _ipa_server_hostname="$2"
+    [ "${_hostname}" != "" ] || return 1
+    [ "${_ipa_server_hostname}" != "" ] || return 2
+    cp /etc/hosts /etc/hosts.dist
+    sed "s/${_hostname}/${_ipa_server_hostname} ${_ipa_server_hostname}. &/" /etc/hosts.dist > /etc/hosts
+    rm -f /etc/hosts.dist
+}
+
+function container_helper_store_hostname
+{
+    local _hostname="$1"
+    [ "${_hostname}" != "" ] || return 1
+    printf "%s\n" "${_hostname}" > "${DATA}/hostname"
+}
+
+function container_helper_error_invoked_without_fqdn
+{
+    printf "Container invoked without fully-qualified hostname\n" >&2
+    printf "   and without specifying hostname to use.\n" >&2
+    printf "Consider using -h FQDN option to docker run.\n" >&2
+    return 15
+}
+
 function container_step_process_hostname
 {
-	if [ -f "${DATA}/hostname" ] ; then
-		STORED_HOSTNAME="$( cat "${DATA}/hostname" )"
+	if container_helper_exist_stored_hostname ; then
+		STORED_HOSTNAME="$( container_helper_cat_data_hostname )"
 		if ! [ "${HOSTNAME}" == "${STORED_HOSTNAME}" ] ; then
 			# Attempt to set hostname from within container, this
 			# will pass if the container has SYS_ADMIN capability.
 			if hostname "${STORED_HOSTNAME}" 2> /dev/null ; then
-				HOSTNAME=$( hostname )
+				HOSTNAME="$( hostname )"
 				if [ "${HOSTNAME}" == "${STORED_HOSTNAME}" ] && ! [ "${IPA_SERVER_HOSTNAME}" == "${HOSTNAME}" ] ; then
-					echo "Using stored hostname ${STORED_HOSTNAME}, ignoring ${IPA_SERVER_HOSTNAME}."
+					printf "%s\n" "Using stored hostname ${STORED_HOSTNAME}, ignoring ${IPA_SERVER_HOSTNAME}."
 				fi
 			fi
 		fi
-		IPA_SERVER_HOSTNAME=$STORED_HOSTNAME
+		IPA_SERVER_HOSTNAME="${STORED_HOSTNAME}"
 	fi
 
 	HOSTNAME_SHORT=${HOSTNAME%%.*}
 	if [ "$HOSTNAME_SHORT" == "$HOSTNAME" ] ; then
-		if [ -z "$IPA_SERVER_HOSTNAME" ] ; then
-			echo "Container invoked without fully-qualified hostname" >&2
-			echo "   and without specifying hostname to use." >&2
-			echo "Consider using -h FQDN option to docker run." >&2
-			exit 15
+		if utils_is_empty_str "${IPA_SERVER_HOSTNAME}" ; then
+            container_helper_error_invoked_without_fqdn
+            exit $?
 		fi
 		# Container is run without FQDN set, we try to "set" it in /etc/hosts
-		cp /etc/hosts /etc/hosts.dist
-		sed "s/$HOSTNAME/$IPA_SERVER_HOSTNAME $IPA_SERVER_HOSTNAME. &/" /etc/hosts.dist > /etc/hosts
-		rm -f /etc/hosts.dist
-		HOSTNAME=$IPA_SERVER_HOSTNAME
+        container_helper_set_hosts_file "${HOSTNAME}" "${IPA_SERVER_HOSTNAME}"
+		HOSTNAME="${IPA_SERVER_HOSTNAME}"
 	fi
 
-    if ! [ -f "$DATA/hostname" ] ; then
-        echo "$HOSTNAME" > "$DATA/hostname"
+    if ! container_helper_exist_stored_hostname ; then
+        container_helper_store_hostname "${HOSTNAME}"
     fi
-}
-
-function container_helper_is_a_symlink
-{
-    local _symlink="$1"
-    [ -L "${_symlink}" ]
-}
-
-function container_helper_is_a_file
-{
-    local _file="$1"
-    [ -f "${_file}" ]
 }
 
 function container_helper_create_machine_id
 {
 	# only triggers when /etc/machine-id is a symlink and not bind-mounted into
 	# the container by a container runtime.
-	if container_helper_is_a_symlink "/etc/machine-id" \
-    && ! container_helper_is_a_file "${DATA}/etc/machine-id" ; then
-		# # https://systemd.io/CONTAINER_INTERFACE/
-		# # shellcheck disable=SC2154
-		# if [ "${container_uuid}" != "" ]; then
-		# 	echo "${container_uuid}" > "${DATA}/etc/machine-id"
-		# else
-		# 	dbus-uuidgen --ensure=${DATA}/etc/machine-id
-		# fi
+	if utils_is_a_symlink "/etc/machine-id" \
+    && ! utils_is_a_file "${DATA}/etc/machine-id" ; then
         dbus-uuidgen --ensure=${DATA}/etc/machine-id
 		chmod 444 "${DATA}/etc/machine-id"
 	fi
@@ -290,29 +314,29 @@ function container_helper_create_machine_id
 
 function container_helper_exist_ca_cert
 {
-    [ -f /etc/ipa/ca.crt ]
+    utils_is_a_file "/etc/ipa/ca.crt"
 }
 
 function container_step_process_first_boot
 {
     if ! container_helper_exist_ca_cert ; then
-        if ! [ -f $DATA/ipa.csr ] ; then
+        if ! utils_is_a_file "${DATA}/ipa.csr" ; then
             # Do not refresh $DATA in the second stage of the external CA setup
-            /usr/local/bin/populate-volume-from-template $DATA
+            /usr/local/bin/populate-volume-from-template "${DATA}"
             container_helper_create_machine_id
         fi
 
-        if [ -n "$PASSWORD" ] ; then
-            if [ "$COMMAND" == 'ipa-server-install' ] ; then
-                printf '%q\n' "--admin-password=$PASSWORD" >> ${OPTIONS_FILE}
-                if ! grep -sq '^--ds-password' $OPTIONS_FILE $DATA_OPTIONS_FILE ; then
-                    printf '%q\n' "--ds-password=$PASSWORD" >> $OPTIONS_FILE
+        if [ -n "${PASSWORD}" ] ; then
+            if [ "${COMMAND}" == 'ipa-server-install' ] ; then
+                printf '%q\n' "--admin-password=${PASSWORD}" >> "${OPTIONS_FILE}"
+                if ! grep -sq '^--ds-password' "${OPTIONS_FILE}" "${DATA_OPTIONS_FILE}" ; then
+                    printf '%q\n' "--ds-password=${PASSWORD}" >> "${OPTIONS_FILE}"
                 fi
-            elif [ "$COMMAND" == 'ipa-replica-install' ] ; then
-                if grep -sq '^--principal' $OPTIONS_FILE $DATA_OPTIONS_FILE ; then
-                    printf '%q\n' "--admin-password=$PASSWORD" >> $OPTIONS_FILE
+            elif [ "${COMMAND}" == 'ipa-replica-install' ] ; then
+                if grep -sq '^--principal' "${OPTIONS_FILE}" "${DATA_OPTIONS_FILE}" ; then
+                    printf '%q\n' "--admin-password=${PASSWORD}" >> "${OPTIONS_FILE}"
                 else
-                    printf '%q\n' "--password=$PASSWORD" >> $OPTIONS_FILE
+                    printf '%q\n' "--password=$PASSWORD" >> "${OPTIONS_FILE}"
                 fi
             else
                 echo "Warning: ignoring environment variable PASSWORD." >&2
@@ -327,11 +351,29 @@ function container_step_process_first_boot
             fi
         fi
 
-        if [ -n "$DEBUG" ] ; then
-            echo "--debug" >> $OPTIONS_FILE
+        if [ -n "${DEBUG}" ] ; then
+            echo "--debug" >> ${OPTIONS_FILE}
         fi
     fi
 }
+
+# Some commands can not be mocked because interfere
+# with the testing framework, because of that this
+# function exists.
+function container_helper_print_data_volume_version
+{
+    cat "${DATA}/volume-version"
+}
+export -f container_helper_print_data_volume_version
+
+# Some commands can not be mocked because interfere
+# with the testing framework, because of that this
+# function exists.
+function container_helper_print_image_volume_version
+{
+    cat "/etc/volume-version"
+}
+export -f container_helper_print_image_volume_version
 
 function container_step_upgrade_version
 {
@@ -339,16 +381,16 @@ function container_step_upgrade_version
     # different from the one in this image.
     # The volume-upgrade file names are in format:
     #         ipa-volume-upgrade-$OLDVERSION-$NEWVERSION
-    if [ -f "$DATA/volume-version" ] ; then
-        DATA_VERSION=$(cat $DATA/volume-version)
-        IMAGE_VERSION=$(cat /etc/volume-version)
-        if ! [ "$DATA_VERSION" == "$IMAGE_VERSION" ] ; then
-            if [ -x /usr/sbin/ipa-volume-upgrade-$DATA_VERSION-$IMAGE_VERSION ] ; then
-                echo "Migrating $DATA data volume version $DATA_VERSION to $IMAGE_VERSION."
-                if /usr/sbin/ipa-volume-upgrade-$DATA_VERSION-$IMAGE_VERSION ; then
-                    cat /etc/volume-version > $DATA/volume-version
+    if utils_is_a_file "${DATA}/volume-version" ; then
+        DATA_VERSION="$( container_helper_print_data_volume_version )"
+        IMAGE_VERSION="$( container_helper_print_image_volume_version )"
+        if ! [ "${DATA_VERSION}" == "${IMAGE_VERSION}" ] ; then
+            if [ -x "/usr/sbin/ipa-volume-upgrade-${DATA_VERSION}-${IMAGE_VERSION}" ] ; then
+                printf "%s\n" "Migrating ${DATA} data volume version ${DATA_VERSION} to ${IMAGE_VERSION}."
+                if "/usr/sbin/ipa-volume-upgrade-${DATA_VERSION}-${IMAGE_VERSION}" ; then
+                    container_helper_print_image_volume_version > "${DATA}/volume-version"
                 else
-                    echo "Migration of $DATA volume to version $IMAGE_VERSION failed."
+                    printf "%s\n" "Migration of ${DATA} volume to version ${IMAGE_VERSION} failed."
                     exit 13
                 fi
             fi
@@ -358,7 +400,7 @@ function container_step_upgrade_version
 
 function container_step_volume_update
 {
-    if [ -f "$DATA/build-id" ] ; then
+    if utils_is_a_file "${DATA}/build-id" ; then
         if ! cmp -s $DATA/build-id $DATA_TEMPLATE/build-id ; then
             echo "FreeIPA server is already configured but with different version, volume update."
             /usr/local/bin/populate-volume-from-template $DATA
@@ -378,7 +420,7 @@ function container_step_volume_update
             done
             SYSTEMD_OPTS=--unit=ipa-server-upgrade.service
         fi
-        if [ -f /etc/ipa/ca.crt ] ; then
+        if container_helper_exist_ca_cert ; then
             rm -f "${DATA}/etc/systemd/system/multi-user.target.wants/ipa-server-configure-first.service"
         fi
     fi
@@ -386,7 +428,7 @@ function container_step_volume_update
 
 function container_step_print_out_timestamps_and_args
 {
-    echo "$(date) ${ARGS[*]}" >> "${LOGFILE_IPA_SERVER_CONFIGURE_FIRST}"
+    printf "%s %s\n" "$(date)" "${ARGS[*]}" >> "${LOGFILE_IPA_SERVER_CONFIGURE_FIRST}"
 }
 
 function container_helper_print_out_log
@@ -403,7 +445,7 @@ function container_step_do_show_log_if_enabled
     SHOW_LOG=${SHOW_LOG:-1}
     if [ "${SHOW_LOG}" == 1 ] ; then
         for i in "${LOGFILE_IPA_SERVER_CONFIGURE_FIRST}" "${LOGFILE_IPA_SERVER_RUN}" ; do
-            if ! [ -f $i ] ; then
+            if ! utils_is_a_file "$i" ; then
                 touch $i
             fi
         done
@@ -411,10 +453,21 @@ function container_step_do_show_log_if_enabled
     fi
 }
 
+function container_helper_write_ipa_server_ip_to_file
+{
+    local _ipa_server_ip="$1"
+    local _output="$2"
+    [ "${_ipa_server_ip}" != "" ] || return 1
+    [ "${_output}" != "" ] || return 2
+    printf "%s\n" "${_ipa_server_ip}" > "${_output}"
+}
+
 function container_step_save_ipa_server_ip_if_provided
 {
-    if [ -n "${IPA_SERVER_IP}" ] ; then
-        printf "%s\n" "${IPA_SERVER_IP}" > /run/ipa/ipa-server-ip
+    if utils_is_not_empty_str "${IPA_SERVER_IP}" ; then
+        # TODO Clean-up
+        # printf "%s\n" "${IPA_SERVER_IP}" > /run/ipa/ipa-server-ip
+        container_helper_write_ipa_server_ip_to_file "${IPA_SERVER_IP}" "/run/ipa/ipa-server-ip"
     fi
 }
 
