@@ -82,10 +82,25 @@ load '../libs/bats-assert/load'
     }
     export -f func_failure
 
-    run tasks_helper_error "test"
+    function helper_error {
+        local retcode=$1
+        shift 1
+        func_failure ${retcode}
+        tasks_helper_error "$@"
+    }
+    export -f helper_error
+
+    run helper_error 1 "test"
     assert_failure
     assert_output <<EOF
 ERROR:errcode=1; traceback:
+ERROR:test
+EOF
+
+    run helper_error 127 "test"
+    assert_failure
+    assert_output <<EOF
+ERROR:errcode=127; traceback:
 ERROR:test
 EOF
 }
