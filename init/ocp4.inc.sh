@@ -5,7 +5,6 @@ function ocp4_step_enable_traces
     test -z "$DEBUG_TRACE" || {
         if [ "${DEBUG_TRACE}" == "2" ]; then
             export SYSTEMD_LOG_LEVEL="debug"
-            export SYSTEMD_LOG_TARGET="journal+console"
             export SYSTEMD_LOG_COLOR="no"
             export DEBUG=1
         fi
@@ -34,15 +33,22 @@ function ocp4_step_systemd_units_set_private_system_off
     ocp4_helper_switch_starting_by_substr "ProtectSystem=full" "# ProtectSystem=full" "/usr/lib/systemd/system/dbus-broker.service"
 }
 
+function ocp4_helper_turn_private_tmp_off_for_one_file
+{
+    local _filename="$1"
+    ocp4_helper_switch_starting_by_substr "PrivateTmp=on" "PrivateTmp=off" "${_filename}"
+    ocp4_helper_switch_starting_by_substr "PrivateTmp=yes" "PrivateTmp=off" "${_filename}"
+    ocp4_helper_switch_starting_by_substr "PrivateTmp=true" "PrivateTmp=off" "${_filename}"
+}
+
 function ocp4_helper_turn_private_tmp_off
 {
     for _filename in "$@"; do
-        [ -e "${_filename}" ] || return 1
-        sed -i \
-            -e s/^PrivateTmp=on/PrivateTmp=off/g \
-            -e s/^PrivateTmp=yes/PrivateTmp=off/g \
-            -e s/^PrivateTmp=true/PrivateTmp=off/g \
-            "${_filename}"
+        utils_path_exists "${_filename}" || {
+            tasks_helper_msg_warning "File '${_filename}' not found at '${FUNCNAME[0]}'"
+            continue
+        }
+        ocp4_helper_turn_private_tmp_off_for_one_file "${_filename}"
     done
 }
 
