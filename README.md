@@ -10,6 +10,8 @@ be solved for Openshift; this repository update some hacks using a modified
 init-data script which implements the necessary for making the container works
 into Openshift.
 
+Synced to init-data at 73940d4 git state.
+
 ## Getting started
 
 Fill up the file `private.mk` with some minimal variables which will avoid to
