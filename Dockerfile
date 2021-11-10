@@ -9,8 +9,11 @@ FROM ${PARENT_IMG}
 # add it at the end
 # COPY ./init/ocp4.inc.sh /usr/local/share/ipa-container/ocp4.inc.sh
 # RUN sed -i 's/^#.\+includes:end/source \"\$\{INIT_DIR\}\/ocp4\.inc\.sh\"\n&./g' /usr/local/share/ipa-container/includes.inc.sh
-RUN [ ! -e "/usr/local/share/ipa-container" ] \
-    || rm -rf "/usr/local/share/ipa-container"
+RUN ( [ ! -e "/usr/local/share/ipa-container" ] \
+      || rm -rf "/usr/local/share/ipa-container" ) \
+    && ( [ ! -e /usr/local/sbin/init ] \
+         || rm -f /usr/local/sbin/init ) \
+    && ln -svf /usr/local/share/ipa-container/init.sh /usr/local/sbin/init
 COPY ./init /usr/local/share/ipa-container
 
 ENTRYPOINT ["/usr/local/sbin/init"]
