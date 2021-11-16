@@ -52,34 +52,24 @@ function ocp4_helper_turn_private_tmp_off
     done
 }
 
+# FIXME PrivateTmp=true allow that other services does not have access to other
+#       software's temporary files.
+#
+#       This function it is only a workaround to let the container run, but this
+#       is not the right solution.
+#
+#       For systemd workloads with PrivateTmp=on should be possible to run.
+#
+#       Create a seccomp profile which could allow to call mount system call
+#       only for the specific fstype and for the command subpath that is
+#       used to mount the temprary file system.
+#
+#       More information about building seccomp profiles for kubernetes:
+#       https://kubernetes.io/docs/tutorials/clusters/seccomp/#create-seccomp-profiles
+#
+#       Other syscalls could be needed.
 function ocp4_step_systemd_units_set_private_tmp_off
 {
-    # Disable PrivateTmp
-    # FIXME Clean-up
-    # sed -i s/^PrivateTmp=on/PrivateTmp=off/g /lib/systemd/system/dirsrv@.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/ipa-custodia.service
-    # sed -i s/^PrivateTmp=true/PrivateTmp=off/g /usr/lib/systemd/system/dbus-broker.service
-    # sed -i s/^PrivateTmp=true/PrivateTmp=off/g /lib/systemd/system/httpd.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/chronyd.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/dbus-org.freedesktop.hostname1.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/dbus-org.freedesktop.locale1.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/dbus-org.freedesktop.login1.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/dbus-org.freedesktop.oom1.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/dbus-org.freedesktop.timedate1.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/ipa-ccache-sweep.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/ipa-dnskeysyncd.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/ipa-ods-exporter.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/systemd-coredump@.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/systemd-hostnamed.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/systemd-localed.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/systemd-logind.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/systemd-oomd.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/systemd-resolved.service
-    # sed -i s/^PrivateTmp=yes/PrivateTmp=off/g /lib/systemd/system/systemd-timedated.service
-    # sed -i s/^PrivateTmp=true/PrivateTmp=off/g /lib/systemd/system/logrotate.service
-    # sed -i s/^PrivateTmp=true/PrivateTmp=off/g /lib/systemd/system/named.service
-    # sed -i s/^PrivateTmp=true/PrivateTmp=off/g /lib/systemd/system/httpd@.service
-
     ocp4_helper_turn_private_tmp_off /lib/systemd/system/dirsrv@.service \
                                      /lib/systemd/system/ipa-custodia.service \
                                      /usr/lib/systemd/system/dbus-broker.service \
