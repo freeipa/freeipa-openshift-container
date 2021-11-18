@@ -110,11 +110,17 @@ function ocp4_step_process_hostname
     fi
 }
 
+function ocp4_step_systemd_tmpfiles_create
+{
+    systemd-tmpfiles --create
+}
+
 OCP4_LIST_TASKS=()
 # +ocp4:begin-list
 OCP4_LIST_TASKS+=("ocp4_step_systemd_units_set_private_tmp_off")
 OCP4_LIST_TASKS+=("ocp4_step_systemd_units_set_private_system_off")
 OCP4_LIST_TASKS+=("ocp4_step_systemd_units_set_private_devices_off")
+OCP4_LIST_TASKS+=("ocp4_step_systemd_tmpfiles_create")
 # +ocp4:end-list
 
 tasks_helper_update_step \

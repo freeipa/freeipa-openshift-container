@@ -17,13 +17,27 @@ function setup
     mock_tasks_helper_add_after 0 "container_step_volume_update" \
                                   "ocp4_step_systemd_units_set_private_tmp_off" \
                                   "ocp4_step_systemd_units_set_private_system_off" \
-                                  "ocp4_step_systemd_units_set_private_devices_off"
+                                  "ocp4_step_systemd_units_set_private_devices_off" \
+                                  "ocp4_step_systemd_tmpfiles_create"
 }
 
 function teardown
 {
     mock unstub tasks_helper_update_step tasks_helper_add_after
 }
+
+
+@test "ocp4_step_systemd_tmpfiles_create" {
+    source './init/ocp4.inc.sh'
+
+    mock stub systemd-tmpfiles
+    mock_systemd-tmpfiles 0 --create
+    run ocp4_step_systemd_tmpfiles_create
+    assert_success
+    assert_mock systemd-tmpfiles
+    mock unstub systemd-tmpfiles
+}
+
 
 @test "ocp4_step_enable_traces" {
 
