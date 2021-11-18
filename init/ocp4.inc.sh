@@ -110,11 +110,19 @@ function ocp4_step_process_hostname
     fi
 }
 
+function ocp4_step_enable_httpd_service
+{
+    if container_helper_exist_ca_cert; then
+        systemctl enable httpd
+    fi
+}
+
 OCP4_LIST_TASKS=()
 # +ocp4:begin-list
 OCP4_LIST_TASKS+=("ocp4_step_systemd_units_set_private_tmp_off")
 OCP4_LIST_TASKS+=("ocp4_step_systemd_units_set_private_system_off")
 OCP4_LIST_TASKS+=("ocp4_step_systemd_units_set_private_devices_off")
+OCP4_LIST_TASKS+=("ocp4_step_enable_httpd_service")
 # +ocp4:end-list
 
 tasks_helper_update_step \
@@ -128,4 +136,3 @@ tasks_helper_update_step \
 tasks_helper_add_after \
     "container_step_volume_update" \
     "${OCP4_LIST_TASKS[@]}"
-

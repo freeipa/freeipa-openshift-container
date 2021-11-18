@@ -9,7 +9,7 @@ load '../libs/bats-mock/load'
 
 function setup
 {
-    mock stub tasks_helper_update_step tasks_helper_add_after
+    mock stub tasks_helper_update_step tasks_helper_add_after tasks_helper_add_before
     mock_tasks_helper_update_step 0 "container_step_enable_traces" \
                                     "ocp4_step_enable_traces"
     mock_tasks_helper_update_step 0 "container_step_process_hostname" \
@@ -17,13 +17,54 @@ function setup
     mock_tasks_helper_add_after 0 "container_step_volume_update" \
                                   "ocp4_step_systemd_units_set_private_tmp_off" \
                                   "ocp4_step_systemd_units_set_private_system_off" \
-                                  "ocp4_step_systemd_units_set_private_devices_off"
+                                  "ocp4_step_systemd_units_set_private_devices_off" \
+                                  "ocp4_step_enable_httpd_service"
 }
 
 function teardown
 {
-    mock unstub tasks_helper_update_step tasks_helper_add_after
+    mock unstub tasks_helper_update_step tasks_helper_add_after tasks_helper_add_before
 }
+
+
+@test "ocp4_step_enable_httpd_service" {
+    source './init/ocp4.inc.sh'
+
+
+    mock stub systemctl container_helper_exist_ca_cert
+    mock_container_helper_exist_ca_cert 1
+    run ocp4_step_enable_httpd_service
+    assert_success
+    assert_output ""
+    assert_mock systemctl container_helper_exist_ca_cert
+    mock unstub systemctl container_helper_exist_ca_cert
+
+
+    mock stub systemctl container_helper_exist_ca_cert
+    mock_container_helper_exist_ca_cert 0
+    mock_systemctl 0 enable httpd
+    mock_systemctl output <<EOF
+Created symlink /etc/systemd/system/multi-user.target.wants/httpd.service → /usr/lib/systemd/system/httpd.service.
+EOF
+    run ocp4_step_enable_httpd_service
+    assert_success
+    assert_output <<EOF
+Created symlink /etc/systemd/system/multi-user.target.wants/httpd.service → /usr/lib/systemd/system/httpd.service.
+EOF
+    assert_mock systemctl container_helper_exist_ca_cert
+    mock unstub systemctl container_helper_exist_ca_cert
+
+    # After enable, the output is empty
+    mock stub systemctl container_helper_exist_ca_cert
+    mock_container_helper_exist_ca_cert 0
+    mock_systemctl 0 enable httpd
+    run ocp4_step_enable_httpd_service
+    assert_success
+    assert_output ""
+    assert_mock systemctl container_helper_exist_ca_cert
+    mock unstub systemctl container_helper_exist_ca_cert
+}
+
 
 @test "ocp4_step_enable_traces" {
 
