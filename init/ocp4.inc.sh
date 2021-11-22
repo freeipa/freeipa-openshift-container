@@ -113,7 +113,7 @@ function ocp4_step_process_hostname
 function ocp4_step_enable_httpd_service
 {
     if container_helper_exist_ca_cert; then
-        systemctl enable httpd
+        systemctl is-enabled httpd || systemctl enable httpd
     fi
 }
 
