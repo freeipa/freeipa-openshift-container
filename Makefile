@@ -1,6 +1,6 @@
 include private.mk
 
-PARENT_IMG ?= quay.io/freeipa/freeipa-server:fedora-34
+PARENT_IMG ?= $(shell grep -v "^#" PARENT_IMG)
 
 # This makefile make life easier for playing with the different
 # proof of concepts.
@@ -87,6 +87,7 @@ endif
 # Build the container image
 .PHONY: container-build
 container-build: .check-docker-image-not-empty Dockerfile
+	@cat PARENT_IMG
 	$(DOCKER) build -t $(IMG) \
 		--build-arg PARENT_IMG=$(PARENT_IMG) \
 		--build-arg QUAY_EXPIRATION=$(QUAY_EXPIRATION) \
