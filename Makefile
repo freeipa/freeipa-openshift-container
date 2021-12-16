@@ -87,7 +87,7 @@ endif
 # Build the container image
 .PHONY: container-build
 container-build: .check-docker-image-not-empty Dockerfile
-	@cat PARENT_IMG
+	@echo "PARENT_IMG=$(PARENT_IMG)"
 	$(DOCKER) build -t $(IMG) \
 		--build-arg PARENT_IMG=$(PARENT_IMG) \
 		--build-arg QUAY_EXPIRATION=$(QUAY_EXPIRATION) \
