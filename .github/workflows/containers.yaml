@@ -35,7 +35,7 @@ jobs:
         run: |
           source ci/config/env
           echo ::set-output name=PARENT_IMG::${PARENT_IMG}
-          IPA_VERSION="$( docker run --rm --entrypoint "" "${{PARENT_IMG}}" rpm -q --qf '%{version}' freeipa-server )"
+          IPA_VERSION="$( docker run --rm --entrypoint "" "${PARENT_IMG}" rpm -q --qf '%{version}' freeipa-server )"
           case "${GITHUB_REF}" in
             "refs/heads/main" )
               if [ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]; then
