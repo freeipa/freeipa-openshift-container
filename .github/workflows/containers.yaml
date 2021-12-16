@@ -12,14 +12,6 @@ on:
     - cron: '0 22 * * *'
 
 jobs:
-  debug:
-    name: Print out some debug
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Print out some debug messages
-        run: |
-          echo "github.event_name=${{ github.event_name }}"
-
   test-unit:
     name: Unit Tests
     runs-on: ubuntu-20.04
