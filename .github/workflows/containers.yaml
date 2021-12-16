@@ -38,7 +38,7 @@ jobs:
           IPA_VERSION="$( docker run --rm --entrypoint "" "${PARENT_IMG}" rpm -q --qf '%{version}' freeipa-server )"
           case "${GITHUB_REF}" in
             "refs/heads/main" )
-              if [ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]; then
+              if [ "${{ github.event_name }}" == "schedule" ]; then
                 echo ::set-output name=TAGS::nightly
               else
                 echo ::set-output name=TAGS::latest ${IPA_VERSION}
