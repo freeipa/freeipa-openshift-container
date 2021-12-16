@@ -33,7 +33,6 @@ jobs:
       - name: Get tags
         id: getParams
         run: |
-          cat PARENT_IMG
           echo ::set-output name=PARENT_IMG::$(grep -v "^#" PARENT_IMG)
           case "${GITHUB_REF}" in
             "refs/heads/main" )
