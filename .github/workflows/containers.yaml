@@ -35,9 +35,14 @@ jobs:
         run: |
           source ci/config/env
           echo ::set-output name=PARENT_IMG::${PARENT_IMG}
+          IPA_VERSION="$( docker run --entrypoint "" "${PARENT_IMG}" rpm -q --qf '%{version}' freeipa-server )"
           case "${GITHUB_REF}" in
             "refs/heads/main" )
-              echo ::set-output name=TAGS::latest
+              if [ "${{ github.event_name }}" == "schedule" || "${{ github.event_name }}" == "workflow_dispatch" ]; then
+                echo ::set-output name=TAGS::nightly
+              else
+                echo ::set-output name=TAGS::latest ${IPA_VERSION}
+              fi
               echo ::set-output name=QUAY_EXPIRATION::never
               ;;
             "refs/tags/v*" )
