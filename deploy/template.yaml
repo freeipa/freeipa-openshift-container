@@ -1,0 +1,286 @@
+# https://docs.openshift.com/container-platform/4.9/openshift_images/using-templates.html
+---
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: freeipa
+  annotations:
+    openshift.io/display-name: "Freeipa ephemeral template"
+    description: >-
+      Freeipa template using an ephemeral storage that allow to play with it.
+    openshift.io/long-description: >-
+      Freeipa template using an ephemeral storage that allow to play with it.
+    tags: "quickstart,freeipa"
+    iconClass: icon-redhat
+    openshift.io/provider-display-name: "Red Hat, Inc."
+    # openshift.io/documentation-url: "https://github.com/freeipa/freeipa-openshift-container"
+    # openshift.io/support-url: "https://"
+objects:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: ${APPLICATION_NAME}
+    labels:
+      app: freeipa
+  spec:
+    containers:
+    - args:
+      - no-exit
+      - ipa-server-install
+      - -U
+      - --realm
+      # IPA_REALM=APPS.CRC.TESTING
+      - ${IPA_REALM}
+      # IPA_CA_CN=freeipa-20211221131121
+      # IPA_CA_O=APPS.CRC.TESTING
+      - --ca-subject=CN=${IPA_CA_CN}, O=${IPA_CA_O}
+      - --no-ntp
+      - --no-sshd
+      - --no-ssh
+      command:
+      - /usr/local/sbin/init
+      env:
+      # - name: KUBERNETES
+      #   value: "1"
+      # - name: DEBUG_TRACE
+      #   valueFrom:
+      #     configMapKeyRef:
+      #       key: DEBUG_TRACE
+      #       name: freeipa-b9b868b769
+      - name: PASSWORD
+        valueFrom:
+          secretKeyRef:
+            key: password
+            name: ${APPLICATION_NAME}
+      - name: IPA_SERVER_HOSTNAME
+        value: ${IPA_HOSTNAME}
+      - name: SYSTEMD_OFFLINE
+        value: "0"
+      - name: SYSTEMD_NSPAWN_API_VFS_WRITABLE
+        value: network
+      image: quay.io/freeipa/freeipa-openshift-container:latest
+      imagePullPolicy: Always
+      lifecycle:
+        preStop:
+          exec:
+            command:
+            - /bin/kill
+            - -s
+            - SIGRTMIN+3
+            - "1"
+      name: workload
+      ports:
+      - containerPort: 80
+        name: http-tcp
+        protocol: TCP
+      - containerPort: 443
+        name: https-tcp
+        protocol: TCP
+      - containerPort: 389
+        name: ldap-tcp
+        protocol: TCP
+      - containerPort: 636
+        name: ldaps-tcp
+        protocol: TCP
+      - containerPort: 88
+        name: kerberos
+        protocol: TCP
+      - containerPort: 749
+        name: kerberos-adm
+        protocol: TCP
+      resources:
+        limits:
+          cpu: "2"
+          memory: 3Gi
+        requests:
+          cpu: "2"
+          memory: 3Gi
+      securityContext:
+        capabilities:
+          add:
+          - CHOWN
+          - FOWNER
+          - DAC_OVERRIDE
+          - SETUID
+          - SETGID
+          - KILL
+          - NET_BIND_SERVICE
+          - SETPCAP
+          - SETFCAP
+          - SYS_ADMIN
+          - SYS_RESOURCE
+          - FSETID
+          drop:
+          - NET_RAW
+          - SYS_CHROOT
+          - AUDIT_CONTROL
+          - AUDIT_READ
+          - BLOCK_SUSPEND
+          - DAC_READ_SEARCH
+          - IPC_LOCK
+          - IPC_OWNER
+          - LEASE
+          - LINUX_IMMUTABLE
+          - MAC_ADMIN
+          - MAC_OVERRIDE
+          - NET_ADMIN
+          - NET_BROADCAST
+          - SYS_BOOT
+          - SYS_MODULE
+          - SYS_NICE
+          - SYS_PACCT
+          - SYS_PTRACE
+          - SYS_RAWIO
+          - SYS_TIME
+          - SYS_TTY_CONFIG
+          - SYSLOG
+          - WAKE_ALARM
+          - SYS_RAWIO
+          - MKNOD
+        privileged: false
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      tty: true
+      volumeMounts:
+      - mountPath: /data
+        name: data
+      - mountPath: /tmp
+        name: systemd-tmp
+      - mountPath: /var/run
+        name: systemd-var-run
+      - mountPath: /var/run/dirsrv
+        name: systemd-var-dirsrv
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    serviceAccountName: freeipa
+    terminationGracePeriodSeconds: 30
+    volumes:
+    - name: "data"
+      emptyDir: {}
+    - name: systemd-var-run
+      emptyDir:
+        medium: Memory
+    - name: "systemd-var-dirsrv"
+      emptyDir:
+        medium: Memory
+    - name: "systemd-run-rpcbind"
+      emptyDir:
+        medium: Memory
+    - name: "systemd-tmp"
+      emptyDir:
+        medium: Memory
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: ${APPLICATION_NAME}
+    labels:
+      app: freeipa
+  spec:
+    internalTrafficPolicy: Cluster
+    ports:
+    - name: kerberos-tcp
+      port: 88
+      protocol: TCP
+      targetPort: 88
+    - name: kerberos-udp
+      port: 88
+      protocol: UDP
+      targetPort: 88
+    - name: kerberos-adm-tcp
+      port: 749
+      protocol: TCP
+      targetPort: 749
+    - name: kerberos-adm-udp
+      port: 749
+      protocol: UDP
+      targetPort: 749
+    selector:
+      app: freeipa
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: ${APPLICATION_NAME}-ldap
+    labels:
+      app: freeipa
+  spec:
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: ldap
+      port: 389
+      protocol: TCP
+      targetPort: 389
+    - name: ldaps
+      port: 636
+      protocol: TCP
+      targetPort: 636
+    selector:
+      app: freeipa
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: ${APPLICATION_NAME}-web
+    labels:
+      app: freeipa
+  spec:
+    internalTrafficPolicy: Cluster
+    ipFamilies:
+    - IPv4
+    ipFamilyPolicy: SingleStack
+    ports:
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: https-tcp
+    selector:
+      app: freeipa
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    name: ${APPLICATION_NAME}
+    annotations:
+      haproxy.router.openshift.io/hsts_header: max-age=31536000;includeSubDomains;preload
+      haproxy.router.openshift.io/timeout: 2s
+      openshift.io/host.generated: "true"
+      template.openshift.io/expose-uri: "http://{.spec.host}"
+    labels:
+      app: freeipa
+  spec:
+    port:
+      targetPort: https
+    tls:
+      termination: passthrough
+    to:
+      kind: Service
+      name: freeipa-web
+      weight: 100
+    wildcardPolicy: None
+parameters:
+- name: APPLICATION_NAME
+  description: Name to be used for the application objects
+  value: freeipa
+  required: false
+- name: IPA_REALM
+  description: Realm to be managed by this freeipa instance
+  required: true
+- name: IPA_CA_CN
+  description: CA Common Name for the CA certificate
+  required: true
+- name: IPA_CA_O
+  description: CA Organization for the CA certificate
+  value: redhat
+  required: true
+- name: IPA_HOSTNAME
+  description: The hostname for the freeipa deployment
+  value: freeipa.crc.testing
