@@ -23,7 +23,9 @@ NAMESPACE ?= $(shell $(NAMESPACE_CMD))
 IPA_SERVER_HOSTNAME_CMD = echo "$(NAMESPACE).$(INGRESS_DOMAIN)"
 IPA_SERVER_HOSTNAME ?= $(shell $(IPA_SERVER_HOSTNAME_CMD))
 TIMESTAMP ?= $(shell date +%Y%m%d%H%M%S)
-CA_SUBJECT := CN=freeipa-$(TIMESTAMP), O=$(REALM)
+CA_CN := freeipa-$(TIMESTAMP)
+CA_O := $(REALM)
+CA_SUBJECT := CN=$(CA_CN), O=$(CA_O)
 
 TESTS_LIST ?= $(wildcard test/unit/*.bats)
 
@@ -200,14 +202,20 @@ endif
 .PHONY: app-create
 app-create: .check-not-empty-password .check-ingress-domain-not-empty .check-docker-image-not-empty .check-logged-in-openshift .generate-secret .generate-config app-validate .FORCE
 	cd deploy/user; kustomize edit set image workload=$(IMG)
-	kustomize build deploy/admin | oc create -f -
+	$(MAKE) .app-create-admin
 	kustomize build deploy/user | oc create -f - --as freeipa
+
+.app-create-admin:
+	kustomize build deploy/admin | oc create -f -
 
 # Delete the application from the cluster
 .PHONY: app-delete
 app-delete: .check-logged-in-openshift .FORCE
 	-kustomize build deploy/user | oc delete -f - --as freeipa
-	-kustomize build deploy/admin | oc delete -f -
+	-$(MAKE) .app-delete-admin
+
+.app-delete-admin:
+	kustomize build deploy/admin | oc delete -f -
 
 .PHONY: app-print-out
 app-print-out: .generate-secret .generate-config .FORCE
@@ -240,3 +248,24 @@ install-test-deps: .venv
 	source .venv/bin/activate ; \
 	  pip install --requirement test/e2e/requirements.txt ; \
 	  ansible-galaxy collection install containers.podman
+
+##@ Templates
+
+template-create:: ## Create the template
+	oc create -f deploy/template.yaml
+
+template-new-app:: ## Use the template for creating a new application
+	-oc create secret generic freeipa \
+	  --from-literal=password=${PASSWORD}
+	oc new-app --template=freeipa \
+	  --param APPLICATION_NAME=freeipa \
+	  --param IPA_REALM=$(REALM) \
+	  --param IPA_CA_CN=$(CA_CN) \
+	  --param IPA_CA_O=$(CA_O) \
+	  --param IPA_HOSTNAME=$(IPA_SERVER_HOSTNAME) \
+
+template-rm-app:: ## Remove the application created by the template
+	oc delete all -l app=freeipa
+
+template-delete:: ## Delete the template
+	oc delete template/freeipa
