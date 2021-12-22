@@ -64,6 +64,27 @@ To remove the created objects just:
 make app-delete
 ```
 
+## Installing and using the template
+
+An Openshift template is provided that let you deploy the current workload state
+by using some parameters; It is required to create the rbac objects at `deploy/admin`
+directory by:
+
+```shell
+kustomize build deploy/admin | oc create -f -
+```
+
+Afterward you can just do the below for installing the template:
+
+```shell
+make template-create
+```
+
+And now you can use the template from the Openshift console, or from the command line
+by using `oc new-app ...` command.
+
+The Makefile provide the rules `template-new-app` and `template-rm-app` for making
+life easier for a quicklook.
 
 ## CI/CD
 
