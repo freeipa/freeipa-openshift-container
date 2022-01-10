@@ -86,6 +86,16 @@ by using `oc new-app ...` command.
 The Makefile provide the rules `template-new-app` and `template-rm-app` for making
 life easier for a quicklook.
 
+You could need to set `CLUSTER_APPS_SUBDOMAIN` when invoking template-new-app rule when
+using CodeReadyContainers such as:
+
+```sh
+make template-new-app CLUSTER_APPS_SUBDOMAIN=apps.crc.testing
+```
+
+> If running in a local SNO cluster, update your `/etc/hosts` file to match the
+> Route object generated.
+
 ## CI/CD
 
 This repository uses GitHub Actions to build, test and push the
