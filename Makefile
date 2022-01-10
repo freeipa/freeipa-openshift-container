@@ -257,8 +257,8 @@ template-create:: ## Create the template
 	oc create -f deploy/template.yaml
 
 template-new-app:: ## Use the template for creating a new application
-	-oc create secret generic freeipa \
-	  --from-literal=password=${PASSWORD}
+	oc create secret generic freeipa \
+	  --from-literal=password="$(PASSWORD)"
 	oc new-app --template=freeipa \
 	  --param APPLICATION_NAME=freeipa \
 	  --param IPA_REALM=$(REALM) \
@@ -268,6 +268,7 @@ template-new-app:: ## Use the template for creating a new application
 
 template-rm-app:: ## Remove the application created by the template
 	oc delete all -l app=freeipa
+	oc delete secret/freeipa
 
 template-delete:: ## Delete the template
 	oc delete template/freeipa
