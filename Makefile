@@ -29,6 +29,7 @@ CA_O := $(REALM)
 CA_SUBJECT := CN=$(CA_CN), O=$(CA_O)
 
 TESTS_LIST ?= $(wildcard test/unit/*.bats)
+TESTS_E2E_LIST ?= $(wildcard test/e2e/*.bats)
 
 # Set the container runtime interface
 ifneq (,$(shell bash -c "command -v podman 2>/dev/null"))
@@ -238,7 +239,7 @@ test-unit:
 
 .PHONY: test-e2e
 test-e2e: .venv
-	source .venv/bin/activate; ansible-playbook ./test/e2e/run-tests.yaml
+	./test/libs/bats/bin/bats $(TESTS_E2E_LIST)
 
 .PHONY: install-test-deps
 install-test-deps: .venv
