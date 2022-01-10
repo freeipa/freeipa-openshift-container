@@ -4,7 +4,6 @@ kind: Kustomization
 
 resources:
 - serviceaccount.yaml
-- user.yaml
 - scc-freeipa.yaml
 - rbac-role.yaml
 - rbac-role-binding.yaml
