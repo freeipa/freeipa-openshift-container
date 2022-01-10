@@ -26,21 +26,19 @@ objects:
       app: freeipa
   spec:
     containers:
-    - args:
+    - name: main
+      command:
+      - /usr/local/sbin/init
+      args:
       - no-exit
       - ipa-server-install
       - -U
       - --realm
-      # IPA_REALM=APPS.CRC.TESTING
       - ${IPA_REALM}
-      # IPA_CA_CN=freeipa-20211221131121
-      # IPA_CA_O=APPS.CRC.TESTING
       - --ca-subject=CN=${IPA_CA_CN}, O=${IPA_CA_O}
       - --no-ntp
       - --no-sshd
       - --no-ssh
-      command:
-      - /usr/local/sbin/init
       env:
       - name: PASSWORD
         valueFrom:
@@ -63,7 +61,120 @@ objects:
             - -s
             - SIGRTMIN+3
             - "1"
-      name: workload
+      ports:
+      - containerPort: 80
+        name: http-tcp
+        protocol: TCP
+      - containerPort: 443
+        name: https-tcp
+        protocol: TCP
+      - containerPort: 389
+        name: ldap-tcp
+        protocol: TCP
+      - containerPort: 636
+        name: ldaps-tcp
+        protocol: TCP
+      - containerPort: 88
+        name: kerberos
+        protocol: TCP
+      - containerPort: 749
+        name: kerberos-adm
+        protocol: TCP
+      resources:
+        limits:
+          cpu: "2"
+          memory: 3Gi
+        requests:
+          cpu: "2"
+          memory: 3Gi
+      securityContext:
+        capabilities:
+          add:
+          - CHOWN
+          - FOWNER
+          - DAC_OVERRIDE
+          - SETUID
+          - SETGID
+          - KILL
+          - NET_BIND_SERVICE
+          - SETPCAP
+          - SETFCAP
+          - SYS_ADMIN
+          - SYS_RESOURCE
+          - FSETID
+          drop:
+          - NET_RAW
+          - SYS_CHROOT
+          - AUDIT_CONTROL
+          - AUDIT_READ
+          - BLOCK_SUSPEND
+          - DAC_READ_SEARCH
+          - IPC_LOCK
+          - IPC_OWNER
+          - LEASE
+          - LINUX_IMMUTABLE
+          - MAC_ADMIN
+          - MAC_OVERRIDE
+          - NET_ADMIN
+          - NET_BROADCAST
+          - SYS_BOOT
+          - SYS_MODULE
+          - SYS_NICE
+          - SYS_PACCT
+          - SYS_PTRACE
+          - SYS_RAWIO
+          - SYS_TIME
+          - SYS_TTY_CONFIG
+          - SYSLOG
+          - WAKE_ALARM
+          - SYS_RAWIO
+          - MKNOD
+        privileged: false
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      tty: true
+      volumeMounts:
+      - mountPath: /data
+        name: data
+      - mountPath: /tmp
+        name: systemd-tmp
+      - mountPath: /var/run
+        name: systemd-var-run
+      - mountPath: /var/run/dirsrv
+        name: systemd-var-dirsrv
+
+
+    initContainers:
+    - name: init-container
+      command:
+      - /usr/local/sbin/init
+      args:
+      - exit-on-finished
+      - ipa-server-install
+      - -U
+      - --realm
+      # IPA_REALM=APPS.CRC.TESTING
+      - ${IPA_REALM}
+      # IPA_CA_CN=freeipa-20211221131121
+      # IPA_CA_O=APPS.CRC.TESTING
+      - --ca-subject=CN=${IPA_CA_CN}, O=${IPA_CA_O}
+      - --no-ntp
+      - --no-sshd
+      - --no-ssh
+      env:
+      - name: PASSWORD
+        valueFrom:
+          secretKeyRef:
+            key: password
+            name: ${APPLICATION_NAME}
+      - name: IPA_SERVER_HOSTNAME
+        value: ${IPA_SERVER_HOSTNAME}
+      - name: SYSTEMD_OFFLINE
+        value: "0"
+      - name: SYSTEMD_NSPAWN_API_VFS_WRITABLE
+        value: network
+      image: quay.io/freeipa/freeipa-openshift-container:latest
+      imagePullPolicy: Always
       ports:
       - containerPort: 80
         name: http-tcp
@@ -150,6 +261,7 @@ objects:
     preemptionPolicy: PreemptLowerPriority
     priority: 0
     restartPolicy: Always
+    serviceAccount: freeipa
     serviceAccountName: freeipa
     terminationGracePeriodSeconds: 30
     volumes:
