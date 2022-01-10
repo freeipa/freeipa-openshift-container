@@ -20,7 +20,8 @@ REALM_CMD = $(INGRESS_DOMAIN_CMD) | tr  '[:lower:]' '[:upper:]'
 REALM ?= $(shell $(REALM_CMD))
 NAMESPACE_CMD = oc project --short=true 2>/dev/null
 NAMESPACE ?= $(shell $(NAMESPACE_CMD))
-IPA_SERVER_HOSTNAME_CMD = echo "$(NAMESPACE).$(INGRESS_DOMAIN)"
+CLUSTER_APPS_SUBDOMAIN ?= apps.$(CLUSTER_DOMAIN)
+IPA_SERVER_HOSTNAME_CMD = echo "$(NAMESPACE).$(CLUSTER_APPS_SUBDOMAIN)"
 IPA_SERVER_HOSTNAME ?= $(shell $(IPA_SERVER_HOSTNAME_CMD))
 TIMESTAMP ?= $(shell date +%Y%m%d%H%M%S)
 CA_CN := freeipa-$(TIMESTAMP)
@@ -262,7 +263,7 @@ template-new-app:: ## Use the template for creating a new application
 	  --param IPA_REALM=$(REALM) \
 	  --param IPA_CA_CN=$(CA_CN) \
 	  --param IPA_CA_O=$(CA_O) \
-	  --param IPA_HOSTNAME=$(IPA_SERVER_HOSTNAME) \
+	  --param IPA_SERVER_HOSTNAME=$(IPA_SERVER_HOSTNAME) \
 
 template-rm-app:: ## Remove the application created by the template
 	oc delete all -l app=freeipa
