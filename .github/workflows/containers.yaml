@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Get tags
+      - name: Get Parameters
         id: getParams
         run: |
           echo ::set-output name=PARENT_IMG::$(grep -v "^#" PARENT_IMG)
