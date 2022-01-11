@@ -265,6 +265,7 @@ template-new-app:: ## Use the template for creating a new application
 	  --param IPA_CA_CN=$(CA_CN) \
 	  --param IPA_CA_O=$(CA_O) \
 	  --param IPA_SERVER_HOSTNAME=$(IPA_SERVER_HOSTNAME) \
+	  --param RELATED_IMAGE_FREEIPA=$(IMG) \
 
 template-rm-app:: ## Remove the application created by the template
 	oc delete all -l app=freeipa
