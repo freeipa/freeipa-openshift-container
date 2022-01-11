@@ -1,4 +1,4 @@
 # Define the PARENT_IMG that is used for the container image
 # INFO: Lines beginning with # are filtered but not empty lines
 # Digest for quay.io/freeipa/fedora-server:35
-quay.io/freeipa/freeipa-server@sha256:3f41bfd8c5c111b9c9e061a2f5e0b8d83e387921c00f4e16a4e44d92932c9e7f
+quay.io/freeipa/freeipa-server@sha256:ba7a482d59a0879bf427ebf8a870cc7f06e6f680c056995933fcbe48b19db0fb
