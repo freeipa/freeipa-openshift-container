@@ -1,6 +1,7 @@
 include private.mk
 
-PARENT_IMG ?= $(shell grep -v "^#" PARENT_IMG)
+# Read the parent image that is used for building the container image
+PARENT_IMG ?= $(shell source ci/config/env; echo $${PARENT_IMG})
 
 # This makefile make life easier for playing with the different
 # proof of concepts.

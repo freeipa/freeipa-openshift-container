@@ -33,7 +33,8 @@ jobs:
       - name: Get Parameters
         id: getParams
         run: |
-          echo ::set-output name=PARENT_IMG::$(grep -v "^#" PARENT_IMG)
+          source ci/config/env
+          echo ::set-output name=PARENT_IMG::${PARENT_IMG}
           case "${GITHUB_REF}" in
             "refs/heads/main" )
               echo ::set-output name=TAGS::latest
@@ -62,7 +63,7 @@ jobs:
             QUAY_EXPIRATION=${{ steps.getParams.outputs.QUAY_EXPIRATION }}
 
       - name: Push To quay.io
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true) }}
         id: push-to-quay
         uses: redhat-actions/push-to-registry@v2
         with:
@@ -73,5 +74,5 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Print image url
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true) }}
         run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
