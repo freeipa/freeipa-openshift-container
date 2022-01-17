@@ -36,6 +36,7 @@ function setup
     [ "${KUBECONFIG}" != "" ] || {
         exit-with-message 1 "ERROR:KUBECONFIG is not defined"
     }
+    ! oc get "namespace/${NAMESPACE}" || oc delete "namespace/${NAMESPACE}"
     oc new-project "${NAMESPACE}"
     kustomize build deploy/admin | oc create -f -
 }
