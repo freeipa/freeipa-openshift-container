@@ -239,6 +239,9 @@ test-unit:
 
 .PHONY: test-e2e
 test-e2e: .venv
+ifeq (,$(KUBECONFIG))
+	@echo "ERROR:KUBECONFIG should be set for running $@"; exit 2
+endif
 	./test/libs/bats/bin/bats $(TESTS_E2E_LIST)
 
 .PHONY: install-test-deps
