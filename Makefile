@@ -1,6 +1,7 @@
 include private.mk
 
-PARENT_IMG ?= quay.io/freeipa/freeipa-server:fedora-34
+# Read the parent image that is used for building the container image
+PARENT_IMG ?= $(shell source ci/config/env; echo $${PARENT_IMG})
 
 # This makefile make life easier for playing with the different
 # proof of concepts.
@@ -87,6 +88,7 @@ endif
 # Build the container image
 .PHONY: container-build
 container-build: .check-docker-image-not-empty Dockerfile
+	@echo "PARENT_IMG=$(PARENT_IMG)"
 	$(DOCKER) build -t $(IMG) \
 		--build-arg PARENT_IMG=$(PARENT_IMG) \
 		--build-arg QUAY_EXPIRATION=$(QUAY_EXPIRATION) \

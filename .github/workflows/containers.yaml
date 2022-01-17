@@ -30,9 +30,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Get tags
-        id: getTags
+      - name: Get Parameters
+        id: getParams
         run: |
+          source ci/config/env
+          echo ::set-output name=PARENT_IMG::${PARENT_IMG}
           case "${GITHUB_REF}" in
             "refs/heads/main" )
               echo ::set-output name=TAGS::latest
@@ -53,14 +55,16 @@ jobs:
         uses: redhat-actions/buildah-build@v2
         with:
           image: freeipa-openshift-container
-          tags: ${{ steps.getTags.outputs.TAGS }}
+          tags: ${{ steps.getParams.outputs.TAGS }}
           dockerfiles: |
             ./Dockerfile
           build-args: |
-            PARENT_IMG=${{ secrets.PARENT_IMG }}
-            QUAY_EXPIRATION=${{ steps.getTags.outputs.QUAY_EXPIRATION }}
+            PARENT_IMG=${{ steps.getParams.outputs.PARENT_IMG }}
+            QUAY_EXPIRATION=${{ steps.getParams.outputs.QUAY_EXPIRATION }}
 
       - name: Push To quay.io
+        # Secrets are not accessible on pull_request events
+        if: ${{ github.event_name != 'pull_request' }}
         id: push-to-quay
         uses: redhat-actions/push-to-registry@v2
         with:
@@ -71,4 +75,6 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Print image url
+        # This depends on the above step, so apply the same filter to match
+        if: ${{ github.event_name != 'pull_request' }}
         run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}"
