@@ -14,6 +14,10 @@ function setup
                                     "ocp4_step_enable_traces"
     mock_tasks_helper_update_step 0 "container_step_process_hostname" \
                                     "ocp4_step_process_hostname"
+    mock_tasks_helper_update_step 0 \
+        "container_step_process_first_boot" \
+        "ocp4_step_process_first_boot"
+
     mock_tasks_helper_add_after 0 "container_step_volume_update" \
                                   "ocp4_step_systemd_units_set_private_tmp_off" \
                                   "ocp4_step_systemd_units_set_private_system_off" \
@@ -21,9 +25,170 @@ function setup
                                   "ocp4_step_systemd_tmpfiles_create"
 }
 
+
 function teardown
 {
     mock unstub tasks_helper_update_step tasks_helper_add_after
+}
+
+
+@test "ocp4_helper_process_password_admin_password" {
+    source './init/ocp4.inc.sh'
+    local _mocks=()
+    _mocks+=("ocp4_helper_write_to_options_file")
+    _mocks+=("ocp4_helper_has_principal_arg")
+    _mocks+=("tasks_helper_msg_warning")
+
+    # No admin password
+    unset COMMAND
+    unset IPA_ADMIN_PASSWORD
+    export IPA_ADMIN_PASSWORD COMMAND
+    mock stub "${_mocks[@]}"
+    run ocp4_helper_process_password_admin_password
+    assert_success
+    assert_output ""
+    assert_mock "${_mocks[@]}"
+    mock unstub "${_mocks[@]}"
+
+    # Admin password and ipa-server-install
+    IPA_ADMIN_PASSWORD="Secret123"
+    COMMAND="ipa-server-install"
+    export IPA_ADMIN_PASSWORD COMMAND
+    mock stub "${_mocks[@]}"
+    mock_ocp4_helper_write_to_options_file 0 "--admin-password=${IPA_ADMIN_PASSWORD}"
+    run ocp4_helper_process_password_admin_password
+    assert_success
+    assert_output ""
+    assert_mock "${_mocks[@]}"
+    mock unstub "${_mocks[@]}"
+
+    # Admins password, ipa-replica-install and --principal
+    IPA_ADMIN_PASSWORD="Secret123"
+    COMMAND="ipa-replica-install"
+    export IPA_ADMIN_PASSWORD COMMAND
+    mock stub "${_mocks[@]}"
+    mock_ocp4_helper_has_principal_arg 0
+    mock_ocp4_helper_write_to_options_file 0 "--admin-password=${IPA_ADMIN_PASSWORD}"
+    run ocp4_helper_process_password_admin_password
+    assert_success
+    assert_output ""
+    assert_mock "${_mocks[@]}"
+    mock unstub "${_mocks[@]}"
+
+    # Admins password, ipa-replica-install and without --principal
+    IPA_ADMIN_PASSWORD="Secret123"
+    COMMAND="ipa-replica-install"
+    export IPA_ADMIN_PASSWORD COMMAND
+    mock stub "${_mocks[@]}"
+    mock_ocp4_helper_has_principal_arg 1
+    mock_ocp4_helper_write_to_options_file 0 "--password=${IPA_ADMIN_PASSWORD}"
+    run ocp4_helper_process_password_admin_password
+    assert_success
+    assert_output ""
+    assert_mock "${_mocks[@]}"
+    mock unstub "${_mocks[@]}"
+
+    # Admin password but no ipa-*-install command
+    IPA_ADMIN_PASSWORD="Secret123"
+    COMMAND="bash"
+    export IPA_ADMIN_PASSWORD COMMAND
+    mock stub "${_mocks[@]}"
+    mock_tasks_helper_msg_warning 0 "Ignoring environment variable IPA_ADMIN_PASSWORD."
+    mock_tasks_helper_msg_warning output <<< "INFO:Ignoring environment variable IPA_ADMIN_PASSWORD."
+    run ocp4_helper_process_password_admin_password
+    assert_success
+    assert_output <<< "INFO:Ignoring environment variable IPA_ADMIN_PASSWORD."
+    assert_mock "${_mocks[@]}"
+    mock unstub "${_mocks[@]}"
+}
+
+
+@test "ocp4_helper_process_password_dm_password" {
+    source './init/ocp4.inc.sh'
+    local _mocks=()
+    _mocks+=("ocp4_helper_has_ds_password_arg")
+    _mocks+=("ocp4_helper_write_to_options_file")
+    _mocks+=("tasks_helper_msg_info")
+    _mocks+=("tasks_helper_msg_warning")
+
+    # No dm password
+    unset COMMAND
+    unset IPA_DM_PASSWORD
+    export IPA_DM_PASSWORD COMMAND
+    mock stub "${_mocks[@]}"
+    run ocp4_helper_process_password_dm_password
+    assert_success
+    assert_output ""
+    assert_mock "${_mocks[@]}"
+    mock unstub "${_mocks[@]}"
+
+    # DM password and ipa-server-install and NOT HAS --ds-password
+    IPA_DM_PASSWORD="Secret123"
+    COMMAND="ipa-server-install"
+    export IPA_DM_PASSWORD COMMAND
+    mock stub "${_mocks[@]}"
+    mock_ocp4_helper_has_ds_password_arg 1
+    mock_ocp4_helper_write_to_options_file 0 "--ds-password=${IPA_DM_PASSWORD}"
+    run ocp4_helper_process_password_dm_password
+    assert_success
+    assert_output ""
+    assert_mock "${_mocks[@]}"
+    mock unstub "${_mocks[@]}"
+
+    # DM password and ipa-server-install and HAS --ds-password
+    IPA_DM_PASSWORD="Secret123"
+    COMMAND="ipa-server-install"
+    export IPA_DM_PASSWORD COMMAND
+    mock stub "${_mocks[@]}"
+    mock_ocp4_helper_has_ds_password_arg 0
+    run ocp4_helper_process_password_dm_password
+    assert_success
+    assert_output ""
+    assert_mock "${_mocks[@]}"
+    mock unstub "${_mocks[@]}"
+
+    # DM password and ipa-replica-install
+    IPA_DM_PASSWORD="Secret123"
+    COMMAND="ipa-replica-install"
+    export IPA_DM_PASSWORD COMMAND
+    mock stub "${_mocks[@]}"
+    mock_tasks_helper_msg_info 0 "IPA_DM_PASSWORD not used for replicas."
+    mock_tasks_helper_msg_info output <<< "INFO:IPA_DM_PASSWORD not used for replicas."
+    run ocp4_helper_process_password_dm_password
+    assert_success
+    assert_output <<< "INFO:IPA_DM_PASSWORD not used for replicas."
+    assert_mock "${_mocks[@]}"
+    mock unstub "${_mocks[@]}"
+
+    # DM password and other command
+    IPA_DM_PASSWORD="Secret123"
+    COMMAND="bash"
+    export IPA_DM_PASSWORD COMMAND
+    mock stub "${_mocks[@]}"
+    mock_tasks_helper_msg_warning 0 "Ignoring environment variable IPA_DM_PASSWORD."
+    mock_tasks_helper_msg_warning output <<< "WARNING:Ignoring environment variable IPA_DM_PASSWORD."
+    run ocp4_helper_process_password_dm_password
+    assert_success
+    assert_output <<< "WARNING:Ignoring environment variable IPA_DM_PASSWORD."
+    assert_mock "${_mocks[@]}"
+    mock unstub "${_mocks[@]}"
+}
+
+
+@test "ocp4_helper_process_password" {
+    source './init/ocp4.inc.sh'
+    local _mocks=()
+    _mocks+=("ocp4_helper_process_password_admin_password")
+    _mocks+=("ocp4_helper_process_password_dm_password")
+
+    mock stub "${_mocks[@]}"
+    mock_ocp4_helper_process_password_admin_password 0
+    mock_ocp4_helper_process_password_dm_password 0
+    run ocp4_helper_process_password
+    assert_success
+    assert_output <<< ""
+    assert_mock "${_mocks[@]}"
+    mock unstub "${_mocks[@]}"
 }
 
 

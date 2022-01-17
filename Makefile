@@ -22,7 +22,7 @@ IPA_SERVER_HOSTNAME ?= $(shell $(IPA_SERVER_HOSTNAME_CMD))
 TIMESTAMP ?= $(shell date +%Y%m%d%H%M%S)
 CA_SUBJECT := CN=freeipa-$(TIMESTAMP), O=$(REALM)
 
-TESTS_LIST ?= tasks,container,ocp4
+TESTS_LIST ?= $(wildcard test/unit/*.bats)
 
 # Set the container runtime interface
 ifneq (,$(shell bash -c "command -v podman 2>/dev/null"))
@@ -219,7 +219,7 @@ test: install-test-deps test-unit test-e2e
 
 .PHONY: test-unit
 test-unit:
-	./test/libs/bats/bin/bats ./test/unit/ocp4.bats
+	./test/libs/bats/bin/bats $(TESTS_LIST)
 
 .PHONY: test-e2e
 test-e2e: .venv
