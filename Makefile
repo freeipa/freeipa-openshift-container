@@ -109,14 +109,11 @@ container-remove: .check-docker-image-not-empty .FORCE
 container-shell:
 	$(DOCKER) run -it --entrypoint "" $(IMG) /bin/bash
 
+PORTS ?= -p 8053:53/udp -p 8053:53 -p 8443:443 -p 8389:389 -p 8636:636 -p 8088:88 -p 8464:464 -p 8088:88/udp -p 8464:464/udp
 .PHONY: container-run
-container-run:
-	[ -e data ] || mkdir -p data
-	-PORTS="-p 53:53/udp -p 53:53 -p 443:443 -p 389:389 -p 636:636 -p 88:88 -p 464:464 -p 88:88/udp -p 464:464/udp" \
-	#$(DOCKER) run -it -d -v "$(PWD)/data:/data:z" --name freeipa-server-container -h ipa.example.test $${PORTS} $(IMG) no-exit ipa-server-install -U -r EXAMPLE.TEST --hostname=ipa.example.test -p $(PASSWORD) --ds-password=$(PASSWORD) --admin-password=$(PASSWORD) --no-ntp --no-sshd --no-ssh
-	$(DOCKER) run -it -d --cap-add FSETID -v "$(PWD)/data:/data:z" --name freeipa-server-container -h ipa.example.test $${PORTS} $(IMG) no-exit ipa-server-install -U -r EXAMPLE.TEST --hostname=ipa.example.test -p $(PASSWORD) --ds-password=$(PASSWORD) --admin-password=$(PASSWORD) --no-ntp --no-sshd --no-ssh
-	# PORTS="-p 53:53/udp -p 53:53 -p 443:443 -p 389:389 -p 636:636 -p 88:88 -p 464:464 -p 88:88/udp -p 464:464/udp" \
-	# $(DOCKER) run -it -d -e IPA_SERVER_HOSTNAME=ipa.example.test -v "$(PWD)/data:/data:z" --name freeipa-server-container -h ipa.example.test $${PORTS} $(IMG) --help
+container-run: .check-not-empty-password
+	$(DOCKER) volume exists freeipa-data || $(DOCKER) volume create freeipa-data
+	$(DOCKER) run -it -d --cap-add FSETID -v "freeipa-data:/data:z" --name freeipa-server-container --hostname ipa.example.test $(PORTS) $(IMG) no-exit ipa-server-install -U -r EXAMPLE.TEST --hostname=ipa.example.test --ds-password=$(IPA_DM_PASSWORD) --admin-password=$(IPA_ADMIN_PASSWORD) --no-ntp --no-sshd --no-ssh
 
 .PHONY: container-logs
 container-logs:
@@ -129,7 +126,7 @@ container-stop:
 
 .PHONY: container-clean
 container-clean: container-stop
-	sudo rm -rf data
+	$(DOCKER) volume rm freeipa-data
 
 # Validate kubernetes object for the app
 .PHONY: app-validate
@@ -170,14 +167,18 @@ endif
 # Check not empty password
 .PHONY: .check-not-empty-password
 .check-not-empty-password: .FORCE
-ifeq (,$(PASSWORD))
-	@echo "ERROR: PASSWORD can not be empty"; exit 2
+ifeq (,$(IPA_ADMIN_PASSWORD))
+	@echo "ERROR: IPA_ADMIN_PASSWORD can not be empty"; exit 2
+endif
+ifeq (,$(IPA_DM_PASSWORD))
+	@echo "ERROR: IPA_DM_PASSWORD can not be empty"; exit 2
 endif
 
 .PHONY: .generate-secret
 .generate-secret: .FORCE
 	@{ \
-		echo "PASSWORD=$(PASSWORD)"; \
+		echo "IPA_ADMIN_PASSWORD=$(IPA_ADMIN_PASSWORD)"; \
+		echo "IPA_DM_PASSWORD=$(IPA_DM_PASSWORD)"; \
 	} > deploy/user/admin-pass.txt
 
 .PHONY: .generate-config
