@@ -1,4 +1,3 @@
 # Define the PARENT_IMG that is used for the container image
-# info of interest: https://access.redhat.com/documentation/en-us/red_hat_quay/3/html/use_red_hat_quay/working_with_tags#deleting-a-tag
 # Digest for quay.io/freeipa/fedora-server:35
-PARENT_IMG=quay.io/freeipa/freeipa-server@sha256:87d9615924dd1ca02a99222a621759ba3d1d9c2206ff55919e75a50a93fdc3a1
+PARENT_IMG=quay.io/freeipa/freeipa-server:35
