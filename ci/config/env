@@ -1,3 +1,2 @@
 # Define the PARENT_IMG that is used for the container image
-# Digest for quay.io/freeipa/fedora-server:35
 PARENT_IMG=quay.io/freeipa/freeipa-server:35
