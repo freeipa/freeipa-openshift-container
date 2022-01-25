@@ -45,21 +45,52 @@ function teardown
     unset IPA_ENROLLMENT_OTP
     export IPA_ENROLLMENT_OTP COMMAND
     mock stub "${_mocks[@]}"
-    run ocp4_helper_process_replica_password
+    run ocp4_helper_process_password_replica_password
     assert_success
     assert_output ""
     assert_mock "${_mocks[@]}"
     mock unstub "${_mocks[@]}"
 
-    # ipa-server-install
+    # Variable with no ipa-replica-install
     unset COMMAND
-    IPA_ENROLLMENT_OTP
+    IPA_ENROLLMENT_OTP="JustATest"
     export IPA_ENROLLMENT_OTP COMMAND
     mock stub "${_mocks[@]}"
     mock_tasks_helper_msg_warning 0 "Ignoring environment variable IPA_ENROLLMENT_OTP."
-    run ocp4_helper_process_replica_password
+    mock_tasks_helper_msg_warning output <<< "WARNING:Ignoring environment variable IPA_ENROLLMENT_OTP."
+    run ocp4_helper_process_password_replica_password
     assert_success
-    assert_output ""
+    assert_output "WARNING:Ignoring environment variable IPA_ENROLLMENT_OTP."
+    assert_mock "${_mocks[@]}"
+    mock unstub "${_mocks[@]}"
+
+    # ipa-replica-install and has_principal_arg
+    COMMAND="ipa-replica-install"
+    IPA_ENROLLMENT_OTP="JustATest"
+    export IPA_ENROLLMENT_OTP COMMAND
+    mock stub "${_mocks[@]}"
+    mock_tasks_helper_msg_info 0 "Using IPA_ENROLLMENT_OTP for replicas."
+    mock_tasks_helper_msg_info output <<< "INFO:Using IPA_ENROLLMENT_OTP for replicas."
+    mock_ocp4_helper_has_principal_arg 0
+    mock_ocp4_helper_write_to_options_file 0 "--admin-password=${IPA_ENROLLMENT_OTP}"
+    run ocp4_helper_process_password_replica_password
+    assert_success
+    assert_output <<< "INFO:Using IPA_ENROLLMENT_OTP for replicas."
+    assert_mock "${_mocks[@]}"
+    mock unstub "${_mocks[@]}"
+
+    # ipa-replica-install and not has_principal_arg
+    COMMAND="ipa-replica-install"
+    IPA_ENROLLMENT_OTP="JustATest"
+    export IPA_ENROLLMENT_OTP COMMAND
+    mock stub "${_mocks[@]}"
+    mock_tasks_helper_msg_info 0 "Using IPA_ENROLLMENT_OTP for replicas."
+    mock_tasks_helper_msg_info output <<< "INFO:Using IPA_ENROLLMENT_OTP for replicas."
+    mock_ocp4_helper_has_principal_arg 1
+    mock_ocp4_helper_write_to_options_file 0 "--password=${IPA_ENROLLMENT_OTP}"
+    run ocp4_helper_process_password_replica_password
+    assert_success
+    assert_output <<< "INFO:Using IPA_ENROLLMENT_OTP for replicas."
     assert_mock "${_mocks[@]}"
     mock unstub "${_mocks[@]}"
 }
