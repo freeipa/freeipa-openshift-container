@@ -17,14 +17,14 @@ PARENT_IMG ?= $(shell source ci/config/env; echo $${PARENT_IMG})
 # CLUSTER_DOMAIN ?= $(shell kubectl get dnses.config.openshift.io/cluster -o json | jq -r '.spec.baseDomain')
 CLUSTER_DOMAIN_CMD = kubectl get dnses.config.openshift.io/cluster -o json | jq -r '.spec.baseDomain'
 CLUSTER_DOMAIN ?= $(shell $(CLUSTER_DOMAIN_CMD))
-# REALM ?= APPS.$(shell echo $(CLUSTER_DOMAIN) | tr  '[:lower:]' '[:upper:]')
-REALM_CMD = echo "APPS.$(shell echo $(shell $(CLUSTER_DOMAIN_CMD)) | tr  '[:lower:]' '[:upper:]')"
+INGRESS_DOMAIN_CMD = kubectl get ingresses.config/cluster -o jsonpath={.spec.domain}
+INGRESS_DOMAIN ?= $(shell $(INGRESS_DOMAIN_CMD))
+REALM_CMD = echo "$(shell echo $(shell $(INGRESS_DOMAIN_CMD)) | tr  '[:lower:]' '[:upper:]')"
 REALM ?= $(shell $(REALM_CMD))
 # NAMESPACE ?= $(shell oc project --short=true 2>/dev/null)
 NAMESPACE_CMD = oc project --short=true 2>/dev/null
 NAMESPACE ?= $(shell $(NAMESPACE_CMD))
-# IPA_SERVER_HOSTNAME ?= $(NAMESPACE).apps.$(CLUSTER_DOMAIN)
-IPA_SERVER_HOSTNAME_CMD = echo "$(NAMESPACE).apps.$(CLUSTER_DOMAIN)"
+IPA_SERVER_HOSTNAME_CMD = echo "$(NAMESPACE).$(INGRESS_DOMAIN)"
 IPA_SERVER_HOSTNAME ?= $(shell $(IPA_SERVER_HOSTNAME_CMD))
 TIMESTAMP ?= $(shell date +%Y%m%d%H%M%S)
 CA_SUBJECT := CN=freeipa-$(TIMESTAMP), O=$(REALM)
@@ -222,7 +222,7 @@ app-print-out: .generate-secret .generate-config .FORCE
 
 .PHONY: app-open-console
 app-open-console:
-	$(OPEN) https://$(NAMESPACE).apps.$(CLUSTER_DOMAIN)
+	$(OPEN) https://$(NAMESPACE).$(INGRESS_DOMAIN)
 
 .PHONY: test
 test: install-test-deps test-unit test-e2e
