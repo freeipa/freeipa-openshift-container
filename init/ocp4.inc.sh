@@ -149,7 +149,7 @@ function ocp4_helper_process_password_admin_password
                 # Force 'Method 2: a privileged user’s credentials' for ipa-replica-install
                 # as described in the documentation at
                 # '19.4. Authorizing the installation of a replica on a system that is not enrolled into IdM'
-                tasks_helper_error "--principal required for container ipa-replica-install command"
+                tasks_helper_error "--principal option is required for container ipa-replica-install command"
             fi
         else
             tasks_helper_msg_warning "Ignoring environment variable IPA_ADMIN_PASSWORD."
