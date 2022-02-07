@@ -6,19 +6,6 @@ IPA_DM_PASSWORD="${IPA_DM_PASSWORD:-${PASSWORD}}"
 # Freeipa admin passowrd
 IPA_ADMIN_PASSWORD="${IPA_ADMIN_PASSWORD:-${PASSWORD}}"
 
-# TODO This could have changes when implementing
-#      the replicas for freeipa-operator repository.
-#
-# This need to get a OTP by:
-#
-# ```sh
-# kinit admin
-# ipa host-add replica.example.com --random
-# ```
-#
-# Reference: https://www.adelton.com/docs/idm/replicate-your-identity-management
-IPA_ENROLLMENT_OTP="${IPA_ENROLLMENT_OTP:-${PASSWORD}}"
-
 function ocp4_step_enable_traces
 {
     test -z "$DEBUG_TRACE" || {
@@ -154,9 +141,16 @@ function ocp4_helper_process_password_admin_password
     # Freeipa admin password
     if [ -n "${IPA_ADMIN_PASSWORD}" ]; then
         if [ "${COMMAND}" == 'ipa-server-install' ] ; then
+            # printf '%q\n' "--admin-password=${IPA_ADMIN_PASSWORD}" >> "${OPTIONS_FILE}"
             ocp4_helper_write_to_options_file "--admin-password=${IPA_ADMIN_PASSWORD}"
         elif [ "${COMMAND}" == "ipa-replica-install" ]; then
-            :
+            if ocp4_helper_has_principal_arg; then
+                # printf '%q\n' "--admin-password=${IPA_ADMIN_PASSWORD}" >> "${OPTIONS_FILE}"
+                ocp4_helper_write_to_options_file "--admin-password=${IPA_ADMIN_PASSWORD}"
+            else
+                # printf '%q\n' "--password=${IPA_ADMIN_PASSWORD}" >> "${OPTIONS_FILE}"
+                ocp4_helper_write_to_options_file "--password=${IPA_ADMIN_PASSWORD}"
+            fi
         else
             tasks_helper_msg_warning "Ignoring environment variable IPA_ADMIN_PASSWORD."
         fi
@@ -169,28 +163,13 @@ function ocp4_helper_process_password_dm_password
     if [ -n "${IPA_DM_PASSWORD}" ]; then
         if [ "${COMMAND}" == 'ipa-server-install' ]; then
             if ! ocp4_helper_has_ds_password_arg; then
+                # printf '%q\n' "--ds-password=${IPA_DM_PASSWORD}" >> "${OPTIONS_FILE}"
                 ocp4_helper_write_to_options_file "--ds-password=${IPA_DM_PASSWORD}"
             fi
         elif [ "${COMMAND}" == "ipa-replica-install" ]; then
-            :
+            tasks_helper_msg_info "IPA_DM_PASSWORD not used for replicas."
         else
             tasks_helper_msg_warning "Ignoring environment variable IPA_DM_PASSWORD."
-        fi
-    fi
-}
-
-function ocp4_helper_process_password_replica_password
-{
-    if [ -n "${IPA_ENROLLMENT_OTP}" ]; then
-        if [ "${COMMAND}" == 'ipa-replica-install' ] ; then
-            tasks_helper_msg_info "Using IPA_ENROLLMENT_OTP for replicas."
-            if ocp4_helper_has_principal_arg; then
-                ocp4_helper_write_to_options_file "--admin-password=${IPA_ENROLLMENT_OTP}"
-            else
-                ocp4_helper_write_to_options_file "--password=${IPA_ENROLLMENT_OTP}"
-            fi
-        else
-            tasks_helper_msg_warning "Ignoring environment variable IPA_ENROLLMENT_OTP."
         fi
     fi
 }
@@ -199,7 +178,6 @@ function ocp4_helper_process_password
 {
     ocp4_helper_process_password_admin_password
     ocp4_helper_process_password_dm_password
-    ocp4_helper_process_password_replica_password
 }
 
 function ocp4_step_process_first_boot
