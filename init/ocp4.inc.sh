@@ -141,15 +141,15 @@ function ocp4_helper_process_password_admin_password
     # Freeipa admin password
     if [ -n "${IPA_ADMIN_PASSWORD}" ]; then
         if [ "${COMMAND}" == 'ipa-server-install' ] ; then
-            # printf '%q\n' "--admin-password=${IPA_ADMIN_PASSWORD}" >> "${OPTIONS_FILE}"
             ocp4_helper_write_to_options_file "--admin-password=${IPA_ADMIN_PASSWORD}"
         elif [ "${COMMAND}" == "ipa-replica-install" ]; then
             if ocp4_helper_has_principal_arg; then
-                # printf '%q\n' "--admin-password=${IPA_ADMIN_PASSWORD}" >> "${OPTIONS_FILE}"
                 ocp4_helper_write_to_options_file "--admin-password=${IPA_ADMIN_PASSWORD}"
             else
-                # printf '%q\n' "--password=${IPA_ADMIN_PASSWORD}" >> "${OPTIONS_FILE}"
-                ocp4_helper_write_to_options_file "--password=${IPA_ADMIN_PASSWORD}"
+                # Force 'Method 2: a privileged user’s credentials' for ipa-replica-install
+                # as described in the documentation at
+                # '19.4. Authorizing the installation of a replica on a system that is not enrolled into IdM'
+                tasks_helper_error "--principal required for container ipa-replica-install command"
             fi
         else
             tasks_helper_msg_warning "Ignoring environment variable IPA_ADMIN_PASSWORD."
@@ -163,7 +163,6 @@ function ocp4_helper_process_password_dm_password
     if [ -n "${IPA_DM_PASSWORD}" ]; then
         if [ "${COMMAND}" == 'ipa-server-install' ]; then
             if ! ocp4_helper_has_ds_password_arg; then
-                # printf '%q\n' "--ds-password=${IPA_DM_PASSWORD}" >> "${OPTIONS_FILE}"
                 ocp4_helper_write_to_options_file "--ds-password=${IPA_DM_PASSWORD}"
             fi
         elif [ "${COMMAND}" == "ipa-replica-install" ]; then
