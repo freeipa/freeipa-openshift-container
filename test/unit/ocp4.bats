@@ -38,6 +38,7 @@ function teardown
     _mocks+=("ocp4_helper_write_to_options_file")
     _mocks+=("ocp4_helper_has_principal_arg")
     _mocks+=("tasks_helper_msg_warning")
+    _mocks+=("tasks_helper_error")
 
     # No admin password
     unset COMMAND
@@ -80,10 +81,10 @@ function teardown
     COMMAND="ipa-replica-install"
     export IPA_ADMIN_PASSWORD COMMAND
     mock stub "${_mocks[@]}"
+    mock_tasks_helper_error 1 "--principal option is required for container ipa-replica-install command"
     mock_ocp4_helper_has_principal_arg 1
-    mock_ocp4_helper_write_to_options_file 0 "--password=${IPA_ADMIN_PASSWORD}"
     run ocp4_helper_process_password_admin_password
-    assert_success
+    assert_failure
     assert_output ""
     assert_mock "${_mocks[@]}"
     mock unstub "${_mocks[@]}"
