@@ -21,7 +21,7 @@ the below:
 ```raw
 IPA_ADMIN_PASSWORD = Secret123
 IPA_DM_PASSWORD = DMSecret123
-IMG_BASE = quay.io/avisied0
+IMG_BASE = quay.io/scope-name
 ```
 
 > The variable `PASSWORD` still set both password when the above ones are
