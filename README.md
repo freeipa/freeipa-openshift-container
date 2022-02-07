@@ -77,6 +77,8 @@ kustomize build deploy/admin | oc create -f -
 Afterward you can just do the below for installing the template:
 
 ```shell
+# You could need to do 'export IMG_BASE=quay.io/scope-name/my-image:my-tag'
+# or add the variable to the 'private.mk' file
 make template-create
 ```
 
