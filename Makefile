@@ -20,8 +20,7 @@ REALM_CMD = $(INGRESS_DOMAIN_CMD) | tr  '[:lower:]' '[:upper:]'
 REALM ?= $(shell $(REALM_CMD))
 NAMESPACE_CMD = oc project --short=true 2>/dev/null
 NAMESPACE ?= $(shell $(NAMESPACE_CMD))
-CLUSTER_APPS_SUBDOMAIN ?= apps.$(CLUSTER_DOMAIN)
-IPA_SERVER_HOSTNAME_CMD = echo "$(NAMESPACE).$(CLUSTER_APPS_SUBDOMAIN)"
+IPA_SERVER_HOSTNAME_CMD = echo "$(NAMESPACE).$(INGRESS_DOMAIN)"
 IPA_SERVER_HOSTNAME ?= $(shell $(IPA_SERVER_HOSTNAME_CMD))
 TIMESTAMP ?= $(shell date +%Y%m%d%H%M%S)
 CA_CN := freeipa-$(TIMESTAMP)
@@ -143,10 +142,6 @@ app-validate: .check-logged-in-openshift .validate-admin .validate-user .FORCE
 	kustomize build deploy/admin | oc create -f - --dry-run=client --validate=true
 .validate-user:
 	kustomize build deploy/user | oc create -f - --dry-run=client --validate=true
-
-# .PHONY: container-deploy
-# container-deploy:
-# 	@echo oc new-app --docker-image $(IMG) --env PASSWORD=$(PASSWORD) --env REALM=$(REALM) --env IPA_SERVER_HOSTNAME=$(IPA_SERVER_HOSTNAME)
 
 JOB_SPEC ?= avisiedo/freeipa-openshift-container-alternative
 .PHONY: ci-operator
