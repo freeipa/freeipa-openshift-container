@@ -231,18 +231,11 @@ app-open-console:
 	$(OPEN) "https://$(IPA_SERVER_HOSTNAME)"
 
 .PHONY: test
-test: install-test-deps test-unit test-e2e
+test: install-test-deps test-unit
 
 .PHONY: test-unit
 test-unit:
 	./test/libs/bats/bin/bats $(TESTS_LIST)
-
-.PHONY: test-e2e
-test-e2e: .venv
-ifeq (,$(KUBECONFIG))
-	@echo "ERROR:KUBECONFIG should be set for running $@"; exit 2
-endif
-	./test/libs/bats/bin/bats $(TESTS_E2E_LIST)
 
 .PHONY: install-test-deps
 install-test-deps: .venv
