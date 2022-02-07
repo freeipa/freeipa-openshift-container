@@ -1,4 +1,8 @@
+ifneq (,$(shell ls -1 private.mk 2>/dev/null))
 include private.mk
+else
+$(info info:For a better user experience you can customize variables by adding them to the 'private.mk' file)
+endif
 
 # Read the parent image that is used for building the container image
 PARENT_IMG ?= $(shell source ci/config/env; echo $${PARENT_IMG})
@@ -32,7 +36,7 @@ ifneq (,$(shell bash -c "command -v docker 2>/dev/null"))
 DOCKER ?= docker
 else
 ifeq (,$(DOCKER))
-$(error DOCKER is not set)
+$(error No podman nor docker were found in your environment; you can override by doing 'export DOCKER=/path/to/docker/or/podman')
 endif
 endif
 endif
@@ -51,7 +55,7 @@ endif
 
 # Change IMG_BASE on your pipeline settings to point to your upstream
 ifeq (,$(IMG_BASE))
-$(error IMG_BASE is empty; export IMG_BASE=quay.io/namespace)
+$(error IMG_BASE is empty. You can do 'export IMG_BASE=quay.io/namespace' or add this variable to the 'private.mk' file; see the 'README.md' file for further information)
 endif
 IMG_TAG ?= dev-$(shell git rev-parse --short HEAD)
 IMG ?= $(IMG_BASE)/freeipa-openshift-container:$(IMG_TAG)
@@ -81,7 +85,7 @@ dump-vars:
 .PHONY: .check-docker-image-not-empty
 .check-docker-image-not-empty: .FORCE
 ifeq (,$(IMG))
-	@echo "'IMG' must be defined. Eg: 'export IMG=quay.io/myusername/freeipa-server:latest'"
+	@echo "'IMG' can not be empty. You can do 'export IMG=quay.io/scope-name/my-image:my-tag' or add the variable to the 'private.mk' file for a better user experience"
 	@exit 1
 endif
 
@@ -152,7 +156,7 @@ ci-operator:
 .PHONY: .check-cluster-domain-not-empty
 .check-cluster-domain-not-empty: .FORCE
 ifeq (,$(CLUSTER_DOMAIN))
-	@echo "'CLUSTER_DOMAIN' must be specified; Try 'CLUSTER_DOMAIN=my.cluster.domain.com make ...'"
+	@echo "'CLUSTER_DOMAIN' can not be empty; You can do 'export CLUSTER_DOMAIN=my.cluster.domain.com' or add it to the 'private.mk' file for a better user experience"
 	@exit 1
 endif
 
@@ -168,10 +172,12 @@ endif
 .PHONY: .check-not-empty-password
 .check-not-empty-password: .FORCE
 ifeq (,$(IPA_ADMIN_PASSWORD))
-	@echo "ERROR: IPA_ADMIN_PASSWORD can not be empty"; exit 2
+	@echo "ERROR: IPA_ADMIN_PASSWORD can not be empty. You can add this variable to the 'private.mk' file; see the 'README.md' file for further information"
+	@exit 2
 endif
 ifeq (,$(IPA_DM_PASSWORD))
-	@echo "ERROR: IPA_DM_PASSWORD can not be empty"; exit 2
+	@echo "ERROR: IPA_DM_PASSWORD can not be empty. You can add this variable to the 'private.mk' file; see the 'README.md' file for further information"
+	@exit 2
 endif
 
 .PHONY: .generate-secret
