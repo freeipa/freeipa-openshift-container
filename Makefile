@@ -1,3 +1,6 @@
+# force serial execution
+.NOTPARALLEL:
+
 ifneq (,$(shell ls -1 private.mk 2>/dev/null))
 include private.mk
 else
