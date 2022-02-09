@@ -1,4 +1,8 @@
+ifneq (,$(shell ls -1 private.mk 2>/dev/null))
 include private.mk
+else
+$(info info:For a better user experience you can customize variables by adding them to the 'private.mk' file)
+endif
 
 # Read the parent image that is used for building the container image
 PARENT_IMG ?= $(shell source ci/config/env; echo $${PARENT_IMG})
@@ -22,7 +26,7 @@ IPA_SERVER_HOSTNAME ?= $(shell $(IPA_SERVER_HOSTNAME_CMD))
 TIMESTAMP ?= $(shell date +%Y%m%d%H%M%S)
 CA_SUBJECT := CN=freeipa-$(TIMESTAMP), O=$(REALM)
 
-TESTS_LIST ?= tasks,container,ocp4
+TESTS_LIST ?= $(wildcard test/unit/*.bats)
 
 # Set the container runtime interface
 ifneq (,$(shell bash -c "command -v podman 2>/dev/null"))
@@ -32,7 +36,7 @@ ifneq (,$(shell bash -c "command -v docker 2>/dev/null"))
 DOCKER ?= docker
 else
 ifeq (,$(DOCKER))
-$(error DOCKER is not set)
+$(error No podman nor docker were found in your environment; you can override by doing 'export DOCKER=/path/to/docker/or/podman')
 endif
 endif
 endif
@@ -51,7 +55,7 @@ endif
 
 # Change IMG_BASE on your pipeline settings to point to your upstream
 ifeq (,$(IMG_BASE))
-$(error IMG_BASE is empty; export IMG_BASE=quay.io/namespace)
+$(error IMG_BASE is empty. You can do 'export IMG_BASE=quay.io/namespace' or add this variable to the 'private.mk' file; see the 'README.md' file for further information)
 endif
 IMG_TAG ?= dev-$(shell git rev-parse --short HEAD)
 IMG ?= $(IMG_BASE)/freeipa-openshift-container:$(IMG_TAG)
@@ -81,7 +85,7 @@ dump-vars:
 .PHONY: .check-docker-image-not-empty
 .check-docker-image-not-empty: .FORCE
 ifeq (,$(IMG))
-	@echo "'IMG' must be defined. Eg: 'export IMG=quay.io/myusername/freeipa-server:latest'"
+	@echo "'IMG' can not be empty. You can do 'export IMG=quay.io/scope-name/my-image:my-tag' or add the variable to the 'private.mk' file for a better user experience"
 	@exit 1
 endif
 
@@ -109,14 +113,11 @@ container-remove: .check-docker-image-not-empty .FORCE
 container-shell:
 	$(DOCKER) run -it --entrypoint "" $(IMG) /bin/bash
 
+PORTS ?= -p 8053:53/udp -p 8053:53 -p 8443:443 -p 8389:389 -p 8636:636 -p 8088:88 -p 8464:464 -p 8088:88/udp -p 8464:464/udp
 .PHONY: container-run
-container-run:
-	[ -e data ] || mkdir -p data
-	-PORTS="-p 53:53/udp -p 53:53 -p 443:443 -p 389:389 -p 636:636 -p 88:88 -p 464:464 -p 88:88/udp -p 464:464/udp" \
-	#$(DOCKER) run -it -d -v "$(PWD)/data:/data:z" --name freeipa-server-container -h ipa.example.test $${PORTS} $(IMG) no-exit ipa-server-install -U -r EXAMPLE.TEST --hostname=ipa.example.test -p $(PASSWORD) --ds-password=$(PASSWORD) --admin-password=$(PASSWORD) --no-ntp --no-sshd --no-ssh
-	$(DOCKER) run -it -d --cap-add FSETID -v "$(PWD)/data:/data:z" --name freeipa-server-container -h ipa.example.test $${PORTS} $(IMG) no-exit ipa-server-install -U -r EXAMPLE.TEST --hostname=ipa.example.test -p $(PASSWORD) --ds-password=$(PASSWORD) --admin-password=$(PASSWORD) --no-ntp --no-sshd --no-ssh
-	# PORTS="-p 53:53/udp -p 53:53 -p 443:443 -p 389:389 -p 636:636 -p 88:88 -p 464:464 -p 88:88/udp -p 464:464/udp" \
-	# $(DOCKER) run -it -d -e IPA_SERVER_HOSTNAME=ipa.example.test -v "$(PWD)/data:/data:z" --name freeipa-server-container -h ipa.example.test $${PORTS} $(IMG) --help
+container-run: .check-not-empty-password
+	$(DOCKER) volume exists freeipa-data || $(DOCKER) volume create freeipa-data
+	$(DOCKER) run -it -d --cap-add FSETID -v "freeipa-data:/data:z" --name freeipa-server-container --hostname ipa.example.test $(PORTS) $(IMG) no-exit ipa-server-install -U -r EXAMPLE.TEST --hostname=ipa.example.test --ds-password=$(IPA_DM_PASSWORD) --admin-password=$(IPA_ADMIN_PASSWORD) --no-ntp --no-sshd --no-ssh
 
 .PHONY: container-logs
 container-logs:
@@ -129,7 +130,7 @@ container-stop:
 
 .PHONY: container-clean
 container-clean: container-stop
-	sudo rm -rf data
+	$(DOCKER) volume rm freeipa-data
 
 # Validate kubernetes object for the app
 .PHONY: app-validate
@@ -155,7 +156,7 @@ ci-operator:
 .PHONY: .check-cluster-domain-not-empty
 .check-cluster-domain-not-empty: .FORCE
 ifeq (,$(CLUSTER_DOMAIN))
-	@echo "'CLUSTER_DOMAIN' must be specified; Try 'CLUSTER_DOMAIN=my.cluster.domain.com make ...'"
+	@echo "'CLUSTER_DOMAIN' can not be empty; You can do 'export CLUSTER_DOMAIN=my.cluster.domain.com' or add it to the 'private.mk' file for a better user experience"
 	@exit 1
 endif
 
@@ -170,14 +171,20 @@ endif
 # Check not empty password
 .PHONY: .check-not-empty-password
 .check-not-empty-password: .FORCE
-ifeq (,$(PASSWORD))
-	@echo "ERROR: PASSWORD can not be empty"; exit 2
+ifeq (,$(IPA_ADMIN_PASSWORD))
+	@echo "ERROR: IPA_ADMIN_PASSWORD can not be empty. You can add this variable to the 'private.mk' file; see the 'README.md' file for further information"
+	@exit 2
+endif
+ifeq (,$(IPA_DM_PASSWORD))
+	@echo "ERROR: IPA_DM_PASSWORD can not be empty. You can add this variable to the 'private.mk' file; see the 'README.md' file for further information"
+	@exit 2
 endif
 
 .PHONY: .generate-secret
 .generate-secret: .FORCE
 	@{ \
-		echo "PASSWORD=$(PASSWORD)"; \
+		echo "IPA_ADMIN_PASSWORD=$(IPA_ADMIN_PASSWORD)"; \
+		echo "IPA_DM_PASSWORD=$(IPA_DM_PASSWORD)"; \
 	} > deploy/user/admin-pass.txt
 
 .PHONY: .generate-config
@@ -219,7 +226,7 @@ test: install-test-deps test-unit test-e2e
 
 .PHONY: test-unit
 test-unit:
-	./test/libs/bats/bin/bats ./test/unit/ocp4.bats
+	./test/libs/bats/bin/bats $(TESTS_LIST)
 
 .PHONY: test-e2e
 test-e2e: .venv

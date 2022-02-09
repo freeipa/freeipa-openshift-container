@@ -19,11 +19,17 @@ pass information through the command line. The content could be something like
 the below:
 
 ```raw
-PASSWORD = MyAdminPassword123
-IMG_BASE = quay.io/avisied0
+IPA_ADMIN_PASSWORD = Secret123
+IPA_DM_PASSWORD = DMSecret123
+IMG_BASE = quay.io/scope-name
 ```
 
-- **PASSWORD** is the admin password and directory service management password.
+> The variable `PASSWORD` still set both password when the above ones are
+> not specified; but it is recommended to use `IPA_ADMIN_PASSWORD` and
+> `IPA_DM_PASSWORD`.
+
+- **IPA_ADMIN_PASSWORD** is the administrator password.
+- **IPA_DM_PASSWORD** is the directory manager password.
 - **IMG_BASE** is the base name used to compose the container image name.
 
 Just run:

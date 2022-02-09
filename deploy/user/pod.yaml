@@ -160,12 +160,16 @@ spec:
             configMapKeyRef:
               name: freeipa
               key: DEBUG_TRACE
-        - name: PASSWORD
+        - name: IPA_ADMIN_PASSWORD
           valueFrom:
-            # configMapKeyRef:
             secretKeyRef:
               name: freeipa
-              key: PASSWORD
+              key: IPA_ADMIN_PASSWORD
+        - name: IPA_DM_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: freeipa
+              key: IPA_DM_PASSWORD
         - name: IPA_SERVER_HOSTNAME
           valueFrom:
             configMapKeyRef:

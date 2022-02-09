@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Directory Manager Password
+IPA_DM_PASSWORD="${IPA_DM_PASSWORD:-${PASSWORD}}"
+
+# Freeipa admin passowrd
+IPA_ADMIN_PASSWORD="${IPA_ADMIN_PASSWORD:-${PASSWORD}}"
+
 function ocp4_step_enable_traces
 {
     test -z "$DEBUG_TRACE" || {
@@ -115,6 +121,93 @@ function ocp4_step_systemd_tmpfiles_create
     systemd-tmpfiles --create
 }
 
+function ocp4_helper_write_to_options_file
+{
+    printf '%q\n' "$1" >> "${OPTIONS_FILE}"
+}
+
+function ocp4_helper_has_principal_arg
+{
+    grep -sq '^--principal' "${OPTIONS_FILE}" "${DATA_OPTIONS_FILE}"
+}
+
+function ocp4_helper_has_ds_password_arg
+{
+    grep -sq '^--ds-password' "${OPTIONS_FILE}" "${DATA_OPTIONS_FILE}"
+}
+
+function ocp4_helper_process_password_admin_password
+{
+    # Freeipa admin password
+    if [ -n "${IPA_ADMIN_PASSWORD}" ]; then
+        if [ "${COMMAND}" == 'ipa-server-install' ] ; then
+            ocp4_helper_write_to_options_file "--admin-password=${IPA_ADMIN_PASSWORD}"
+        elif [ "${COMMAND}" == "ipa-replica-install" ]; then
+            if ocp4_helper_has_principal_arg; then
+                ocp4_helper_write_to_options_file "--admin-password=${IPA_ADMIN_PASSWORD}"
+            else
+                # Force 'Method 2: a privileged user’s credentials' for ipa-replica-install
+                # as described in the documentation at
+                # '19.4. Authorizing the installation of a replica on a system that is not enrolled into IdM'
+                tasks_helper_error "--principal option is required for container ipa-replica-install command"
+            fi
+        else
+            tasks_helper_msg_warning "Ignoring environment variable IPA_ADMIN_PASSWORD."
+        fi
+    fi
+}
+
+function ocp4_helper_process_password_dm_password
+{
+    # Directory manager password
+    if [ -n "${IPA_DM_PASSWORD}" ]; then
+        if [ "${COMMAND}" == 'ipa-server-install' ]; then
+            if ! ocp4_helper_has_ds_password_arg; then
+                ocp4_helper_write_to_options_file "--ds-password=${IPA_DM_PASSWORD}"
+            fi
+        elif [ "${COMMAND}" == "ipa-replica-install" ]; then
+            tasks_helper_msg_info "IPA_DM_PASSWORD not used for replicas."
+        else
+            tasks_helper_msg_warning "Ignoring environment variable IPA_DM_PASSWORD."
+        fi
+    fi
+}
+
+function ocp4_helper_process_password
+{
+    ocp4_helper_process_password_admin_password
+    ocp4_helper_process_password_dm_password
+}
+
+function ocp4_step_process_first_boot
+{
+    if ! container_helper_exist_ca_cert ; then
+        if ! utils_is_a_file "${DATA}/ipa.csr" ; then
+            # Do not refresh $DATA in the second stage of the external CA setup
+            /usr/local/bin/populate-volume-from-template "${DATA}"
+            container_helper_create_machine_id
+        fi
+
+        ocp4_helper_process_password
+
+        if [ -n "$IPA_SERVER_INSTALL_OPTS" ] ; then
+            # FIXME Fix this shellcheck hint when refactoring this
+            #       function for unit tests
+            # shellcheck disable=SC2166
+            if [ "$COMMAND" == 'ipa-server-install' -o "$COMMAND" = 'ipa-replica-install' ] ; then
+                echo "$IPA_SERVER_INSTALL_OPTS" >> "$OPTIONS_FILE"
+            else
+                echo "Warning: ignoring environment variable IPA_SERVER_INSTALL_OPTS." >&2
+            fi
+        fi
+
+        if [ -n "${DEBUG}" ] ; then
+            echo "--debug" >> "${OPTIONS_FILE}"
+        fi
+    fi
+}
+
+
 OCP4_LIST_TASKS=()
 # +ocp4:begin-list
 OCP4_LIST_TASKS+=("ocp4_step_systemd_units_set_private_tmp_off")
@@ -130,6 +223,10 @@ tasks_helper_update_step \
 tasks_helper_update_step \
     "container_step_process_hostname" \
     "ocp4_step_process_hostname"
+
+tasks_helper_update_step \
+    "container_step_process_first_boot" \
+    "ocp4_step_process_first_boot"
 
 tasks_helper_add_after \
     "container_step_volume_update" \
