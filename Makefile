@@ -244,12 +244,14 @@ install-test-deps: .venv
 
 ##@ Templates
 
-template-create:: ## Create the template
+template-create: ## Create the template
 	oc create -f deploy/template.yaml
 
-template-new-app:: ## Use the template for creating a new application
+template-new-app: ## Use the template for creating a new application
+	$(MAKE) .check-not-empty-password
 	oc create secret generic freeipa \
-	  --from-literal=password="$(PASSWORD)"
+	  --from-literal=IPA_ADMIN_PASSWORD="$(IPA_ADMIN_PASSWORD)" \
+	  --from-literal=IPA_DM_PASSWORD="$(IPA_DM_PASSWORD)"
 	oc new-app --template=freeipa \
 	  --param APPLICATION_NAME=freeipa \
 	  --param IPA_REALM=$(REALM) \

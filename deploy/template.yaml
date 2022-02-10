@@ -40,10 +40,15 @@ objects:
       - --no-sshd
       - --no-ssh
       env:
-      - name: PASSWORD
+      - name: IPA_ADMIN_PASSWORD
         valueFrom:
           secretKeyRef:
-            key: password
+            key: IPA_ADMIN_PASSWORD
+            name: ${APPLICATION_NAME}
+      - name: IPA_DM_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            key: IPA_DM_PASSWORD
             name: ${APPLICATION_NAME}
       - name: IPA_SERVER_HOSTNAME
         value: ${IPA_SERVER_HOSTNAME}
@@ -160,10 +165,15 @@ objects:
       - --no-sshd
       - --no-ssh
       env:
-      - name: PASSWORD
+      - name: IPA_ADMIN_PASSWORD
         valueFrom:
           secretKeyRef:
-            key: password
+            key: IPA_ADMIN_PASSWORD
+            name: ${APPLICATION_NAME}
+      - name: IPA_DM_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            key: IPA_DM_PASSWORD
             name: ${APPLICATION_NAME}
       - name: IPA_SERVER_HOSTNAME
         value: ${IPA_SERVER_HOSTNAME}
