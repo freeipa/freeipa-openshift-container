@@ -14,14 +14,12 @@ PARENT_IMG ?= $(shell source ci/config/env; echo $${PARENT_IMG})
 # proof of concepts.
 
 # Customizable cluster domain for deploying wherever we want
-# CLUSTER_DOMAIN ?= $(shell kubectl get dnses.config.openshift.io/cluster -o json | jq -r '.spec.baseDomain')
-CLUSTER_DOMAIN_CMD = kubectl get dnses.config.openshift.io/cluster -o json | jq -r '.spec.baseDomain'
+CLUSTER_DOMAIN_CMD = kubectl get dnses.config.openshift.io/cluster -o jsonpath='{.spec.baseDomain}'
 CLUSTER_DOMAIN ?= $(shell $(CLUSTER_DOMAIN_CMD))
-INGRESS_DOMAIN_CMD = kubectl get ingresses.config/cluster -o jsonpath={.spec.domain}
+INGRESS_DOMAIN_CMD = kubectl get ingresses.config/cluster -o jsonpath='{.spec.domain}'
 INGRESS_DOMAIN ?= $(shell $(INGRESS_DOMAIN_CMD))
 REALM_CMD = echo "$(shell echo $(shell $(INGRESS_DOMAIN_CMD)) | tr  '[:lower:]' '[:upper:]')"
 REALM ?= $(shell $(REALM_CMD))
-# NAMESPACE ?= $(shell oc project --short=true 2>/dev/null)
 NAMESPACE_CMD = oc project --short=true 2>/dev/null
 NAMESPACE ?= $(shell $(NAMESPACE_CMD))
 IPA_SERVER_HOSTNAME_CMD = echo "$(NAMESPACE).$(INGRESS_DOMAIN)"
@@ -77,6 +75,7 @@ help: .FORCE
 .PHONY: dump-vars
 dump-vars:
 	@echo CLUSTER_DOMAIN=$(CLUSTER_DOMAIN)
+	@echo INGRESS_DOMAIN=$(INGRESS_DOMAIN)
 	@echo REALM=$(REALM)
 	@echo TIMESTAMP=$(TIMESTAMP)
 	@echo DOCKER=$(DOCKER)
