@@ -63,3 +63,19 @@ To remove the created objects just:
 ```shell
 make app-delete
 ```
+
+
+## CI/CD
+
+This repository uses GitHub Actions to build, test and push the
+resulting container image to an image registry.  If you fork this
+repository and want to push the image, set the following **secrets**
+in your repository settings on GitHub:
+
+* `REGISTRY_SCOPE`: e.g. `quay.io/user-or-project-name`
+* `REGISTRY_USERNAME`: registry account name (robot account recommended)
+* `REGISTRY_PASSWORD`: registry password
+
+You can extract both the account name and registry password by
+base64-decoding an access token.  The account name and password are
+separated by a colon character (`:`).
