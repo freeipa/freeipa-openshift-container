@@ -94,14 +94,14 @@ load '../libs/bats-mock/load'
 }
 
 
-@test "container_step_populate_volume_from_template" {
+@test "container_step_populate_tmp" {
     source './init/utils.inc.sh'
     source './init/tasks.inc.sh'
     source './init/container.inc.sh'
 
     mock stub container_helper_invoke_populate_volume_from_template
     mock_container_helper_invoke_populate_volume_from_template 0 "/tmp"
-    run container_step_populate_volume_from_template
+    run container_step_populate_tmp
     assert_success
     assert_mock container_helper_invoke_populate_volume_from_template
     mock unstub container_helper_invoke_populate_volume_from_template
