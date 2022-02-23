@@ -73,7 +73,7 @@ function container_helper_invoke_populate_volume_from_template
     /usr/local/bin/populate-volume-from-template "${directory}"
 }
 
-function container_step_populate_volume_from_template
+function container_step_populate_tmp
 {
     container_helper_invoke_populate_volume_from_template "/tmp"
 }
@@ -508,7 +508,7 @@ CONTAINER_LIST_TASKS+=("container_step_enable_traces")
 CONTAINER_LIST_TASKS+=("container_step_set_workdir_to_root")
 CONTAINER_LIST_TASKS+=("container_step_exec_whitelist_commands")
 CONTAINER_LIST_TASKS+=("container_step_clean_directories")
-CONTAINER_LIST_TASKS+=("container_step_populate_volume_from_template")
+CONTAINER_LIST_TASKS+=("container_step_populate_tmp")
 CONTAINER_LIST_TASKS+=("container_step_create_directories")
 CONTAINER_LIST_TASKS+=("container_step_link_journal")
 CONTAINER_LIST_TASKS+=("container_step_do_check_terminate_await")
