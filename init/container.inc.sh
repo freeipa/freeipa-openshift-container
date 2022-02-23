@@ -70,7 +70,13 @@ function container_helper_invoke_populate_volume_from_template
 {
     local directory="$1"
     [ "${directory}" != "" ] || return 1
-    /usr/local/bin/populate-volume-from-template "${directory}"
+    # Modify the populate-volume-from-template program to tolerate
+    # chmod/chown failure.  We do this "inline" so that we do not
+    # write the root fs (which may be read-only).
+    sed \
+        's/\(\s*\(chown\|chmod\).*\)/\1 || ( echo "Failed to \2 $VOLUME" ; ls -ld "$VOLUME" )/' \
+        /usr/local/bin/populate-volume-from-template \
+        | /bin/sh -s "${directory}"
 }
 
 function container_step_populate_tmp
