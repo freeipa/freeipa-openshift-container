@@ -426,8 +426,10 @@ function container_step_volume_update
             # shellcheck disable=SC2162,SC2002
             cat /etc/volume-data-list | while read i ; do
                 if [ -e "${DATA_TEMPLATE}$i" ] && [ -e "$DATA$i" ] ; then
-                    chown "--reference=${DATA_TEMPLATE}$i" "${DATA}$i"
-                    chmod "--reference=${DATA_TEMPLATE}$i" "${DATA}$i"
+                    chown "--reference=${DATA_TEMPLATE}$i" "${DATA}$i" \
+                        || ( echo "Failed to chown $VOLUME" ; ls -ld "$VOLUME" )
+                    chmod "--reference=${DATA_TEMPLATE}$i" "${DATA}$i" \
+                        || ( echo "Failed to chmod $VOLUME" ; ls -ld "$VOLUME" )
                 fi
             done
             SYSTEMD_OPTS=--unit=ipa-server-upgrade.service
