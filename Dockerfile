@@ -15,6 +15,7 @@ RUN ( [ ! -e "/usr/local/share/ipa-container" ] \
          || rm -f /usr/local/sbin/init ) \
     && ln -svf /usr/local/share/ipa-container/init.sh /usr/local/sbin/init
 COPY ./init /usr/local/share/ipa-container
+COPY ./tmpfiles.conf /usr/lib/tmpfiles.d/00-ipa-container.conf
 
 ENTRYPOINT ["/usr/local/sbin/init"]
 
