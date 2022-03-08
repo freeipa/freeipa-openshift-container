@@ -193,18 +193,6 @@ function teardown
 }
 
 
-@test "ocp4_step_systemd_tmpfiles_create" {
-    source './init/ocp4.inc.sh'
-
-    mock stub systemd-tmpfiles
-    mock_systemd-tmpfiles 0 --create
-    run ocp4_step_systemd_tmpfiles_create
-    assert_success
-    assert_mock systemd-tmpfiles
-    mock unstub systemd-tmpfiles
-}
-
-
 @test "ocp4_step_enable_traces" {
 
     source './init/ocp4.inc.sh'
