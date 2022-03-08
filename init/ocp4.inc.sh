@@ -118,7 +118,7 @@ function ocp4_step_process_hostname
 
 function ocp4_step_systemd_tmpfiles_create
 {
-    systemd-tmpfiles --create
+    /usr/local/share/ipa-container/tmpfiles.py --create
 }
 
 function ocp4_helper_write_to_options_file
