@@ -14,11 +14,9 @@ PARENT_IMG ?= $(shell source ci/config/env; echo $${PARENT_IMG})
 # proof of concepts.
 
 # Customizable cluster domain for deploying wherever we want
-CLUSTER_DOMAIN_CMD = kubectl get dnses.config.openshift.io/cluster -o jsonpath='{.spec.baseDomain}'
-CLUSTER_DOMAIN ?= $(shell $(CLUSTER_DOMAIN_CMD))
 INGRESS_DOMAIN_CMD = kubectl get ingresses.config/cluster -o jsonpath='{.spec.domain}'
 INGRESS_DOMAIN ?= $(shell $(INGRESS_DOMAIN_CMD))
-REALM_CMD = echo "$(shell echo $(shell $(INGRESS_DOMAIN_CMD)) | tr  '[:lower:]' '[:upper:]')"
+REALM_CMD = $(INGRESS_DOMAIN_CMD) | tr  '[:lower:]' '[:upper:]'
 REALM ?= $(shell $(REALM_CMD))
 NAMESPACE_CMD = oc project --short=true 2>/dev/null
 NAMESPACE ?= $(shell $(NAMESPACE_CMD))
@@ -74,7 +72,6 @@ help: .FORCE
 
 .PHONY: dump-vars
 dump-vars:
-	@echo CLUSTER_DOMAIN=$(CLUSTER_DOMAIN)
 	@echo INGRESS_DOMAIN=$(INGRESS_DOMAIN)
 	@echo REALM=$(REALM)
 	@echo TIMESTAMP=$(TIMESTAMP)
@@ -155,10 +152,10 @@ ci-operator:
 
 
 # Check that cluster domain is not empty
-.PHONY: .check-cluster-domain-not-empty
-.check-cluster-domain-not-empty: .FORCE
-ifeq (,$(CLUSTER_DOMAIN))
-	@echo "'CLUSTER_DOMAIN' can not be empty; You can do 'export CLUSTER_DOMAIN=my.cluster.domain.com' or add it to the 'private.mk' file for a better user experience"
+.PHONY: .check-ingress-domain-not-empty
+.check-ingress-domain-not-empty: .FORCE
+ifeq (,$(INGRESS_DOMAIN))
+	@echo "'INGRESS_DOMAIN' can not be empty; You can do 'export INGRESS_DOMAIN=my.cluster.domain.com' or add it to the 'private.mk' file for a better user experience"
 	@exit 1
 endif
 
@@ -201,7 +198,7 @@ endif
 
 # Deploy the application
 .PHONY: app-create
-app-create: .check-not-empty-password .check-cluster-domain-not-empty .check-docker-image-not-empty .check-logged-in-openshift .generate-secret .generate-config app-validate .FORCE
+app-create: .check-not-empty-password .check-ingress-domain-not-empty .check-docker-image-not-empty .check-logged-in-openshift .generate-secret .generate-config app-validate .FORCE
 	cd deploy/user; kustomize edit set image workload=$(IMG)
 	kustomize build deploy/admin | oc create -f -
 	kustomize build deploy/user | oc create -f - --as freeipa
@@ -221,7 +218,7 @@ app-print-out: .generate-secret .generate-config .FORCE
 
 .PHONY: app-open-console
 app-open-console:
-	$(OPEN) https://$(NAMESPACE).$(INGRESS_DOMAIN)
+	$(OPEN) "https://$(IPA_SERVER_HOSTNAME)"
 
 .PHONY: test
 test: install-test-deps test-unit test-e2e
@@ -232,7 +229,7 @@ test-unit:
 
 .PHONY: test-e2e
 test-e2e: .venv
-	source .venv/bin/activate; ansible-playbook ./test/e2e/run-tests.yaml 
+	source .venv/bin/activate; ansible-playbook ./test/e2e/run-tests.yaml
 
 .PHONY: install-test-deps
 install-test-deps: .venv
