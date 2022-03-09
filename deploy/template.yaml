@@ -30,6 +30,14 @@ objects:
     IPA_DM_PASSWORD: "${IPA_DM_PASSWORD}"
   immutable: true
 - apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: ${APPLICATION_NAME}
+  data:
+    IPA_SERVER_HOSTNAME: ${IPA_SERVER_HOSTNAME}
+    SYSTEMD_OFFLINE: "0"
+    SYSTEMD_NSPAWN_API_VFS_WRITABLE: network
+- apiVersion: v1
   kind: Pod
   metadata:
     name: ${APPLICATION_NAME}
@@ -54,13 +62,9 @@ objects:
       - secretRef:
           name: ${APPLICATION_NAME}
           optional: false
-      env:
-      - name: IPA_SERVER_HOSTNAME
-        value: ${IPA_SERVER_HOSTNAME}
-      - name: SYSTEMD_OFFLINE
-        value: "0"
-      - name: SYSTEMD_NSPAWN_API_VFS_WRITABLE
-        value: network
+      - configMapRef:
+          name: ${APPLICATION_NAME}
+          optional: false
       image: ${{RELATED_IMAGE_FREEIPA}}
       imagePullPolicy: Always
       lifecycle:
@@ -173,13 +177,9 @@ objects:
       - secretRef:
           name: ${APPLICATION_NAME}
           optional: false
-      env:
-      - name: IPA_SERVER_HOSTNAME
-        value: ${IPA_SERVER_HOSTNAME}
-      - name: SYSTEMD_OFFLINE
-        value: "0"
-      - name: SYSTEMD_NSPAWN_API_VFS_WRITABLE
-        value: network
+      - configMapRef:
+          name: ${APPLICATION_NAME}
+          optional: false
       image: ${{RELATED_IMAGE_FREEIPA}}
       imagePullPolicy: Always
       ports:
