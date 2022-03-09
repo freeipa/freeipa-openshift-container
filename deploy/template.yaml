@@ -33,6 +33,8 @@ objects:
   kind: ConfigMap
   metadata:
     name: ${APPLICATION_NAME}
+    labels:
+      app: freeipa
   data:
     IPA_SERVER_HOSTNAME: ${IPA_SERVER_HOSTNAME}
     SYSTEMD_OFFLINE: "0"
