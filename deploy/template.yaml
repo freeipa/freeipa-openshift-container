@@ -24,9 +24,6 @@ objects:
     name: ${APPLICATION_NAME}
     labels:
       app: freeipa
-    annotations:
-      template.openshift.io/expose-admin-password: "{.data['IPA_ADMIN_PASSWORD']}"
-      template.openshift.io/expose-dm-password: "{.data['IPA_DM_PASSWORD']}"
   stringData:
     IPA_ADMIN_PASSWORD: "${IPA_ADMIN_PASSWORD}"
     IPA_DM_PASSWORD: "${IPA_DM_PASSWORD}"
