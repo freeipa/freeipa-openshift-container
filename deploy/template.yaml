@@ -19,6 +19,18 @@ metadata:
     # openshift.io/support-url: "https://"
 objects:
 - apiVersion: v1
+  kind: Secret
+  metadata:
+    name: ${APPLICATION_NAME}
+    labels:
+      app: freeipa
+    annotations:
+      template.openshift.io/expose-admin-password: "{.data['IPA_ADMIN_PASSWORD']}"
+      template.openshift.io/expose-dm-password: "{.data['IPA_DM_PASSWORD']}"
+  stringData:
+    IPA_ADMIN_PASSWORD: "${IPA_ADMIN_PASSWORD}"
+    IPA_DM_PASSWORD: "${IPA_DM_PASSWORD}"
+- apiVersion: v1
   kind: Pod
   metadata:
     name: ${APPLICATION_NAME}
@@ -39,17 +51,11 @@ objects:
       - --no-ntp
       - --no-sshd
       - --no-ssh
+      envFrom:
+      - secretRef:
+          name: ${APPLICATION_NAME}
+          optional: false
       env:
-      - name: IPA_ADMIN_PASSWORD
-        valueFrom:
-          secretKeyRef:
-            key: IPA_ADMIN_PASSWORD
-            name: ${APPLICATION_NAME}
-      - name: IPA_DM_PASSWORD
-        valueFrom:
-          secretKeyRef:
-            key: IPA_DM_PASSWORD
-            name: ${APPLICATION_NAME}
       - name: IPA_SERVER_HOSTNAME
         value: ${IPA_SERVER_HOSTNAME}
       - name: SYSTEMD_OFFLINE
@@ -164,17 +170,11 @@ objects:
       - --no-ntp
       - --no-sshd
       - --no-ssh
+      envFrom:
+      - secretRef:
+          name: ${APPLICATION_NAME}
+          optional: false
       env:
-      - name: IPA_ADMIN_PASSWORD
-        valueFrom:
-          secretKeyRef:
-            key: IPA_ADMIN_PASSWORD
-            name: ${APPLICATION_NAME}
-      - name: IPA_DM_PASSWORD
-        valueFrom:
-          secretKeyRef:
-            key: IPA_DM_PASSWORD
-            name: ${APPLICATION_NAME}
       - name: IPA_SERVER_HOSTNAME
         value: ${IPA_SERVER_HOSTNAME}
       - name: SYSTEMD_OFFLINE
@@ -388,6 +388,21 @@ parameters:
   description: Name to be used for the application objects
   value: freeipa
   required: false
+- name: IPA_ADMIN_PASSWORD
+  displayName: Admin password
+  description: |-
+    The password for the IPA admin user
+  generate: expression
+  from: '[\w]{5}-[\w]{5}-[\w]{5}-[\w]{5}'
+  required: true
+- name: IPA_DM_PASSWORD
+  displayName: Directory manager password
+  description: |-
+    The password to be used by the Directory Server for
+    the Directory Manager user
+  generate: expression
+  from: '[\w]{5}-[\w]{5}-[\w]{5}-[\w]{5}'
+  required: true
 - name: IPA_REALM
   description: Realm to be managed by this freeipa instance
   required: true
