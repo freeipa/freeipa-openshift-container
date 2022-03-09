@@ -37,6 +37,7 @@ objects:
     IPA_SERVER_HOSTNAME: ${IPA_SERVER_HOSTNAME}
     SYSTEMD_OFFLINE: "0"
     SYSTEMD_NSPAWN_API_VFS_WRITABLE: network
+  immutable: true
 - apiVersion: v1
   kind: Pod
   metadata:
