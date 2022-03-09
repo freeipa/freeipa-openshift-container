@@ -17,12 +17,14 @@ same target file is mentioned by multiple config files).
 
 """
 
+import argparse
 import collections
 import glob
 import grp
 import itertools
 import operator
 import os
+import pathlib
 import pwd
 import shutil
 import stat
@@ -44,12 +46,14 @@ def list_tmpfiles_configs():
     )
 
 
-def read_tmpfiles_config(path):
+def read_tmpfiles_config(path, prefix):
     """
     Read the tmpfiles config.  Return a `list` of groups of
     `(path,list_of_actions)` tuples, with paths in lexicographic
     order.  Therefore, prefix/parent paths are always listed before
     suffix/child paths.
+
+    Ignore paths that do not match the given `prefix`.
 
     """
     with open(path) as f:
@@ -58,6 +62,17 @@ def read_tmpfiles_config(path):
         parse_action(line.strip())
         for line in lines
         if len(line.strip()) > 0 and not line.startswith("#")
+    )
+
+    # filter out paths that do not match prefix
+    prefix_Path = pathlib.Path(prefix)
+
+    def matches_prefix(s):
+        s_Path = pathlib.Path(s)
+        return prefix_Path in [s_Path, *s_Path.parents]
+
+    actions = (
+        (path, action) for path, action in actions if matches_prefix(path)
     )
 
     # putting things in order.
@@ -106,16 +121,32 @@ def parse_action(line):
     return (path, action)
 
 
-def main(dry_run):
+def main():
+    parser = argparse.ArgumentParser(description="systemd-tmpfiles clone")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--create", action="store_true")
+    parser.add_argument("--remove", action="store_true")
+    parser.add_argument("--clean", action="store_true")
+    parser.add_argument("--prefix", default="/")
+    args = parser.parse_args()
+
+    if not any([args.create, args.remove, args.clean]):
+        sys.exit("Must specify one or more of --create, --remove, --clean")
+    if args.remove:
+        sys.exit("--remove is not implemented")
+    if args.clean:
+        sys.exit("--clean is not implemented")
+
     config_files = list_tmpfiles_configs()
     for config_file in config_files:
-        for path, actions in read_tmpfiles_config(config_file):
+        for path, actions in read_tmpfiles_config(config_file, args.prefix):
             print(f">>> {path}")
             for action in actions:
-                if dry_run:
+                if args.dry_run:
                     print(action)
                 else:
-                    action.apply(path)
+                    if args.create:
+                        action.apply(path)
 
 
 def _parse_mode(s):
@@ -648,4 +679,4 @@ ACTION_MAP = collections.OrderedDict(
 
 
 if __name__ == "__main__":
-    main(dry_run="--dry-run" in sys.argv)
+    main()
