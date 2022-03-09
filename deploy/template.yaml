@@ -30,6 +30,7 @@ objects:
   stringData:
     IPA_ADMIN_PASSWORD: "${IPA_ADMIN_PASSWORD}"
     IPA_DM_PASSWORD: "${IPA_DM_PASSWORD}"
+  immutable: true
 - apiVersion: v1
   kind: Pod
   metadata:
@@ -62,7 +63,7 @@ objects:
         value: "0"
       - name: SYSTEMD_NSPAWN_API_VFS_WRITABLE
         value: network
-      image: quay.io/freeipa/freeipa-openshift-container:latest
+      image: ${{RELATED_IMAGE_FREEIPA}}
       imagePullPolicy: Always
       lifecycle:
         preStop:
@@ -181,7 +182,7 @@ objects:
         value: "0"
       - name: SYSTEMD_NSPAWN_API_VFS_WRITABLE
         value: network
-      image: quay.io/freeipa/freeipa-openshift-container:latest
+      image: ${{RELATED_IMAGE_FREEIPA}}
       imagePullPolicy: Always
       ports:
       - containerPort: 80
