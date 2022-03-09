@@ -247,22 +247,26 @@ install-test-deps: .venv
 template-create: ## Create the template
 	oc create -f deploy/template.yaml
 
+TEMPLATE_ARGS =
+ifneq (,$(IPA_ADMIN_PASSWORD))
+TEMPLATE_ARGS += --param IPA_ADMIN_PASSWORD="$(IPA_ADMIN_PASSWORD)"
+endif
+ifneq (,$(IPA_DM_PASSWORD))
+TEMPLATE_ARGS += --param IPA_DM_PASSWORD="$(IPA_DM_PASSWORD)"
+endif
 template-new-app: ## Use the template for creating a new application
-	$(MAKE) .check-not-empty-password
-	oc create secret generic freeipa \
-	  --from-literal=IPA_ADMIN_PASSWORD="$(IPA_ADMIN_PASSWORD)" \
-	  --from-literal=IPA_DM_PASSWORD="$(IPA_DM_PASSWORD)"
 	oc new-app --template=freeipa \
-	  --param APPLICATION_NAME=freeipa \
-	  --param IPA_REALM=$(REALM) \
-	  --param IPA_CA_CN=$(CA_CN) \
-	  --param IPA_CA_O=$(CA_O) \
-	  --param IPA_SERVER_HOSTNAME=$(IPA_SERVER_HOSTNAME) \
-	  --param RELATED_IMAGE_FREEIPA=$(IMG) \
+	  --param APPLICATION_NAME="freeipa" \
+	  --param IPA_REALM="$(REALM)" \
+	  --param IPA_CA_CN="$(CA_CN)" \
+	  --param IPA_CA_O="$(CA_O)" \
+	  --param IPA_SERVER_HOSTNAME="$(IPA_SERVER_HOSTNAME)" \
+	  --param RELATED_IMAGE_FREEIPA="$(IMG)" \
+	  $(TEMPLATE_ARGS)
+
 
 template-rm-app:: ## Remove the application created by the template
-	oc delete all -l app=freeipa
-	oc delete secret/freeipa
+	oc delete all,secrets -l app=freeipa
 
 template-delete:: ## Delete the template
 	oc delete template/freeipa
