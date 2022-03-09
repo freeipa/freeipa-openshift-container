@@ -263,6 +263,11 @@ class Action:
         """
         raise NotImplementedError
 
+    def _chown_and_chmod(self, path):
+        # the order matters, because chown(2) resets SUID and SGID bits
+        self._chown(path)
+        self._chmod(path)
+
     def _chmod(self, path):
         """Set the file mode.  Caller must ensure file exists."""
         if self.mode is None:
@@ -319,8 +324,7 @@ class FileCreate(Action):
         if not os.path.lexists(path):
             with open(path, "w") as f:
                 f.write(self.arg if self.arg is not None else "")
-        self._chmod(path)
-        self._chown(path)
+        self._chown_and_chmod(path)
 
 
 class FileCreateOrTruncate(Action):
@@ -329,8 +333,7 @@ class FileCreateOrTruncate(Action):
     def apply_one(self, path):
         with open(path, "w") as f:
             f.write(self.arg if self.arg is not None else "")
-        self._chmod(path)
-        self._chown(path)
+        self._chown_and_chmod(path)
 
 
 class FileWrite(GlobAction):
@@ -341,8 +344,7 @@ class FileWrite(GlobAction):
     def apply_one(self, path):
         with open(path, "w") as f:
             f.write(self.arg if self.arg is not None else "")
-        self._chmod(path)
-        self._chown(path)
+        self._chown_and_chmod(path)
 
 
 class FileAppend(GlobAction):
@@ -351,8 +353,7 @@ class FileAppend(GlobAction):
     def apply_one(self, path):
         with open(path, "a") as f:
             f.write(self.arg if self.arg is not None else "")
-        self._chmod(path)
-        self._chown(path)
+        self._chown_and_chmod(path)
 
 
 class DirCreateAndCleanup(Action):
@@ -361,8 +362,7 @@ class DirCreateAndCleanup(Action):
     def apply_one(self, path):
         if not os.path.lexists(path):
             os.makedirs(path)
-            self._chmod(path)
-            self._chown(path)
+            self._chown_and_chmod(path)
 
 
 class DirCreateAndRemove(DirCreateAndCleanup):
@@ -376,8 +376,7 @@ class DirCleanup(GlobAction):
 
     def apply_one(self, path):
         if os.path.isdir(path):
-            self._chmod(path)
-            self._chown(path)
+            self._chown_and_chmod(path)
 
 
 class SubvolumeCreate_v(DirCreateAndCleanup):
@@ -515,8 +514,7 @@ class ModeAdjust(GlobAction):
 
     def apply_one(self, path):
         if os.path.lexists(path):
-            self._chmod(path)
-            self._chown(path)
+            self._chown_and_chmod(path)
             # TODO restore SELinux context
 
 
@@ -526,15 +524,13 @@ class ModeAdjustRecursive(GlobAction):
     def apply_one(self, path):
         if os.path.islink(path) or not os.path.isdir(path):
             # link or file
-            self._chmod(path)
-            self._chown(path)
+            self._chown_and_chmod(path)
             # TODO restore SELinux context
         else:  # directory
             for dirname, dirs, files in os.walk(path):
                 for filename in dirs + files:
                     node = os.path.join(dirname, filename)
-                    self._chmod(node)
-                    self._chown(node)
+                    self._chown_and_chmod(path)
                     # TODO restore SELinux context
 
 
