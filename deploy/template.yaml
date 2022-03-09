@@ -1,4 +1,5 @@
 # https://docs.openshift.com/container-platform/4.9/openshift_images/using-templates.html
+# https://access.redhat.com/documentation/en-us/openshift_container_platform/4.9/html/images/using-templates
 ---
 apiVersion: template.openshift.io/v1
 kind: Template
