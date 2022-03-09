@@ -17,6 +17,12 @@ RUN ( [ ! -e "/usr/local/share/ipa-container" ] \
 COPY ./init /usr/local/share/ipa-container
 COPY ./tmpfiles.conf /usr/lib/tmpfiles.d/00-ipa-container.conf
 
+# Completely replace systemd-tmpfiles.  This is needed until FreeIPA
+# itself provides a way to select the tmpfiles implementation via
+# the 'ipapython.paths' facility.
+RUN mv /bin/systemd-tmpfiles /bin/systemd-tmpfiles.orig
+COPY ./init/tmpfiles.py /bin/systemd-tmpfiles
+
 ENTRYPOINT ["/usr/local/sbin/init"]
 
 ARG QUAY_EXPIRATION=2w
