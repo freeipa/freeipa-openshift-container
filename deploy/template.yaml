@@ -385,9 +385,11 @@ objects:
     wildcardPolicy: None
 parameters:
 - name: APPLICATION_NAME
-  description: Name to be used for the application objects
+  displayName: Application name
+  description: |-
+    Name to be used for the application objects
   value: freeipa
-  required: false
+  required: true
 - name: IPA_ADMIN_PASSWORD
   displayName: Admin password
   description: |-
@@ -403,19 +405,25 @@ parameters:
   generate: expression
   from: '[\w]{5}-[\w]{5}-[\w]{5}-[\w]{5}'
   required: true
+- name: IPA_SERVER_HOSTNAME
+  displayName: Hostname
+  description: The hostname for the freeipa deployment
+  required: true
 - name: IPA_REALM
+  displayName: Realm
   description: Realm to be managed by this freeipa instance
   required: true
 - name: IPA_CA_CN
+  displayName: CA Common Name
   description: CA Common Name for the CA certificate
   required: true
 - name: IPA_CA_O
+  displayName: CA Organization
   description: CA Organization for the CA certificate
   value: redhat
   required: true
-- name: IPA_SERVER_HOSTNAME
-  description: The hostname for the freeipa deployment
 - name: RELATED_IMAGE_FREEIPA
+  displayName: Image
   description: The image to be used for the workload
-  required: false
+  required: true
   value: quay.io/freeipa/freeipa-openshift-container:latest
