@@ -362,7 +362,7 @@ class DirCreateAndCleanup(Action):
     def apply_one(self, path):
         if not os.path.lexists(path):
             os.makedirs(path)
-            self._chown_and_chmod(path)
+        self._chown_and_chmod(path)
 
 
 class DirCreateAndRemove(DirCreateAndCleanup):
