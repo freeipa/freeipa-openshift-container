@@ -50,7 +50,7 @@ def list_tmpfiles_configs():
     for confdir in TMPFILES_DIRS:
         try:
             candidates = os.listdir(confdir)
-        except NotADirectoryError:
+        except (NotADirectoryError, FileNotFoundError):
             continue
         for conffile in candidates:
             if not conffile.endswith(".conf"):
