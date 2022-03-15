@@ -26,10 +26,12 @@ import operator
 import os
 import pathlib
 import pwd
+import re
 import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 
 TMPFILES_DIRS = (
     "/etc/tmpfiles.d",
@@ -37,6 +39,8 @@ TMPFILES_DIRS = (
     "/usr/lib/tmpfiles.d"
 )
 FACTORY_DIR = "/usr/share/factory"
+BOOT_ID = "/proc/sys/kernel/random/boot_id"
+MACHINE_ID = "/etc/machine-id"
 
 
 def list_tmpfiles_configs():
@@ -62,6 +66,70 @@ def list_tmpfiles_configs():
     # sort by file name, no matter which directory the file resides in.
     conffiles.sort(key=os.path.basename)
     return conffiles
+
+
+def get_specifier_map():
+    """Create mapping from specifier to value"""
+    # $TMPDIR, $TEMP, $TMP, or /tmp
+    tmpdir = tempfile.gettempdir()
+
+    uname = os.uname()
+    # machine is "x86_64", systemd wants "x86_64"
+    arch = uname.machine.replace("_", "-")
+    hostname = uname.nodename
+    shortname = hostname.split(".", 1)[0]
+
+    with open(BOOT_ID) as f:
+        # Kernel boot_id file has dashes, systemd strips dashes
+        boot_id = f.read().strip().replace("-", "")
+
+    with open(MACHINE_ID) as f:
+        machine_id = f.read().strip()
+
+    return {
+        "a": arch,  # architecture
+        # "A": None,  # os-release IMAGE_VERSION or empty string
+        "b": boot_id,
+        # "B": None,  # os-release BUILD_ID or empty string
+        "C": "/var/cache",  # system cache dir
+        "g": "root",  # user group name
+        "G": "0",  # user gid
+        "h": "/root",  # home dir
+        "H": hostname,  # node host name
+        "l": shortname,  # short host name
+        "L": "/var/log",  # system log dir
+        "m": machine_id,  # /etc/machine-id
+        # "M": None,  # os-release IMAGE_ID or empty string
+        # "o": None,  # os-release ID, never empty string (!)
+        "S": "/var/lib",  # system state dir
+        "t": "/run",  # system runtime dir
+        "T": tmpdir,  # system tmp dir
+        "u": "root",  # user name
+        "U": "0",  # uid
+        "v": uname.release,  # Kernel release (uname -r)
+        "V": "/var/run",  # large file tmp dir
+        # "w": None,  # os-release VERSION_ID or empty string
+        # "W": None,  # os-release VARIANT_ID or empty string
+        "%": "%",  # %% -> %
+    }
+
+
+SPECIFIERS = get_specifier_map()
+
+
+def resolve_specifiers(path):
+    """Substitate specifiers in a path (%b, %m, ...)"""
+    if "%" not in path:  # fast path
+        return path
+
+    def subst_cb(mo):
+        spec = mo.group(1)
+        try:
+            return SPECIFIERS[spec]
+        except KeyError:
+            raise ValueError(f"Unsupported specififer '{spec}' in '{path}'.")
+
+    return re.sub(r"%([a-zA-Z%])", subst_cb, path)
 
 
 def read_tmpfiles_config(path, prefix):
@@ -129,6 +197,9 @@ def parse_action(line):
     fields = line.split(maxsplit=6)
     fields += [None] * (7 - len(fields))  # extend to required length
     typ, path, mode, user, group, age, arg = fields
+
+    # apply templating, e.g. %b
+    path = resolve_specifiers(path)
 
     boot_only = "!" in typ
     ignore_error = "-" in typ  # TODO implement
