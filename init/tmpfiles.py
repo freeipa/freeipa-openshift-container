@@ -31,19 +31,35 @@ import stat
 import subprocess
 import sys
 
-TMPFILES_DIR = "/usr/lib/tmpfiles.d"
+TMPFILES_DIRS = (
+    "/etc/tmpfiles.d",
+    "/run/tmpfiles.d",
+    "/usr/lib/tmpfiles.d"
+)
 FACTORY_DIR = "/usr/share/factory"
 
 
 def list_tmpfiles_configs():
+    """Return sorted list of absolute paths to tmpfiles configs.
+
+    Files are searched in /etc, /run, and /usr directories. File names
+    /etc takes precedence over /run and /usr.
     """
-    Return sorted list of absolute paths to tmpfiles configs.
-    """
-    return sorted(
-        os.path.join(TMPFILES_DIR, f)
-        for f in os.listdir(TMPFILES_DIR)
-        if f.endswith(".conf")
-    )
+    seen = set()
+    conffiles = []
+    for confdir in TMPFILES_DIRS:
+        try:
+            candidates = os.listdir(confdir)
+        except NotADirectoryError:
+            continue
+        for conffile in sorted(candidates):
+            if not conffile.endswith(".conf"):
+                continue
+            if conffile in seen:
+                continue
+            seen.add(conffile)
+            conffiles.append(os.path.join(confdir, conffile))
+    return conffiles
 
 
 def read_tmpfiles_config(path, prefix):
