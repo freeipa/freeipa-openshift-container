@@ -52,13 +52,15 @@ def list_tmpfiles_configs():
             candidates = os.listdir(confdir)
         except NotADirectoryError:
             continue
-        for conffile in sorted(candidates):
+        for conffile in candidates:
             if not conffile.endswith(".conf"):
                 continue
             if conffile in seen:
                 continue
             seen.add(conffile)
             conffiles.append(os.path.join(confdir, conffile))
+    # sort by file name, no matter which directory the file resides in.
+    conffiles.sort(key=os.path.basename)
     return conffiles
 
 
