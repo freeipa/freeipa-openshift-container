@@ -3,4 +3,4 @@ deploy/user/config.txt
 private.mk
 data
 .venv
-
+__pycache__
