@@ -39,8 +39,8 @@ TMPFILES_DIRS = (
     "/usr/lib/tmpfiles.d"
 )
 FACTORY_DIR = "/usr/share/factory"
-BOOT_ID = "/proc/sys/kernel/random/boot_id"
-MACHINE_ID = "/etc/machine-id"
+BOOT_ID_FILE = "/proc/sys/kernel/random/boot_id"
+MACHINE_ID_FILE = "/etc/machine-id"
 
 
 def list_tmpfiles_configs():
@@ -73,17 +73,23 @@ def get_specifier_map():
     # $TMPDIR, $TEMP, $TMP, or /tmp
     tmpdir = tempfile.gettempdir()
 
+    # specifier_user_id() calls getuid(), not geteuid()
+    uid = os.getuid()
+    username = pwd.getpwuid(uid).pw_name
+    gid = os.getgid()
+    groupname = grp.getgrgid(gid).gr_name
+
     uname = os.uname()
-    # machine is "x86_64", systemd wants "x86_64"
+    # machine is "x86_64", systemd wants "x86-64"
     arch = uname.machine.replace("_", "-")
     hostname = uname.nodename
     shortname = hostname.split(".", 1)[0]
 
-    with open(BOOT_ID) as f:
+    with open(BOOT_ID_FILE) as f:
         # Kernel boot_id file has dashes, systemd strips dashes
         boot_id = f.read().strip().replace("-", "")
 
-    with open(MACHINE_ID) as f:
+    with open(MACHINE_ID_FILE) as f:
         machine_id = f.read().strip()
 
     return {
@@ -92,8 +98,8 @@ def get_specifier_map():
         "b": boot_id,
         # "B": None,  # os-release BUILD_ID or empty string
         "C": "/var/cache",  # system cache dir
-        "g": "root",  # user group name
-        "G": "0",  # user gid
+        "g": groupname,  # user group name
+        "G": str(gid),  # user gid
         "h": "/root",  # home dir
         "H": hostname,  # node host name
         "l": shortname,  # short host name
@@ -104,8 +110,8 @@ def get_specifier_map():
         "S": "/var/lib",  # system state dir
         "t": "/run",  # system runtime dir
         "T": tmpdir,  # system tmp dir
-        "u": "root",  # user name
-        "U": "0",  # uid
+        "u": username,  # user name
+        "U": str(uid),  # uid
         "v": uname.release,  # Kernel release (uname -r)
         "V": "/var/run",  # large file tmp dir
         # "w": None,  # os-release VERSION_ID or empty string
@@ -118,7 +124,7 @@ SPECIFIERS = get_specifier_map()
 
 
 def resolve_specifiers(path):
-    """Substitate specifiers in a path (%b, %m, ...)"""
+    """Substitute specifiers in a path (%b, %m, ...)"""
     if "%" not in path:  # fast path
         return path
 
