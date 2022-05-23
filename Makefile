@@ -266,7 +266,7 @@ template-new-app: ## Use the template for creating a new application
 
 
 template-rm-app:: ## Remove the application created by the template
-	oc delete all,secrets,configmaps -l app=freeipa
+	oc delete route,services,pods,configmaps,secrets -l app=freeipa
 
 template-delete:: ## Delete the template
 	oc delete template/freeipa
