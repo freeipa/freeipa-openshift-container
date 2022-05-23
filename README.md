@@ -66,6 +66,9 @@ make app-delete
 
 ## Installing and using the template
 
+> Knowing bug:The template can be instantiated from the cli with 'oc' but
+> it can not be instantiated from OpenShift Console. The pod is not created.
+
 An Openshift template is provided that let you deploy the current workload state
 by using some parameters; It is required to create the rbac objects at `deploy/admin`
 directory by:
@@ -77,7 +80,7 @@ kustomize build deploy/admin | oc create -f -
 Afterward you can just do the below for installing the template:
 
 ```shell
-# You could need to do 'export IMG_BASE=quay.io/scope-name/my-image:my-tag'
+# You could need to do 'export IMG_BASE=quay.io/scope-name'
 # or add the variable to the 'private.mk' file
 make template-create
 ```
@@ -87,16 +90,6 @@ by using `oc new-app ...` command.
 
 The Makefile provide the rules `template-new-app` and `template-rm-app` for making
 life easier for a quicklook.
-
-You could need to set `CLUSTER_APPS_SUBDOMAIN` when invoking template-new-app rule when
-using CodeReadyContainers such as:
-
-```sh
-make template-new-app CLUSTER_APPS_SUBDOMAIN=apps.crc.testing
-```
-
-> If running in a local SNO cluster, update your `/etc/hosts` file to match the
-> Route object generated.
 
 ## CI/CD
 
