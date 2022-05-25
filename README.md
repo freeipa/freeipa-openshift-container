@@ -66,12 +66,15 @@ make app-delete
 
 ## Installing and using the template
 
-> Knowing bug:The template can be instantiated from the cli with 'oc' but
+> Known bug:The template can be instantiated from the cli with 'oc' but
 > it can not be instantiated from OpenShift Console. The pod is not created.
 
 An Openshift template is provided that let you deploy the current workload state
-by using some parameters; It is required to create the rbac objects at `deploy/admin`
-directory by:
+by using some parameters; this template is using ephemeral storage which means
+that the information is lost between pod restarts and with new template instances,
+so keep it in mind when using it.
+
+It requires to previously create the rbac objects at `deploy/admin` directory by:
 
 ```shell
 kustomize build deploy/admin | oc create -f -
