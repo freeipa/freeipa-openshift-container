@@ -5,6 +5,12 @@ ARG PARENT_IMG=quay.io/freeipa/freeipa-server:fedora-35
 # hadolint ignore=DL3006
 FROM ${PARENT_IMG}
 
+# upgrade job must not depend on systemd-tmpfiles-setup (or any other service)
+RUN sed -i 's/Requires=systemd-tmpfiles-setup.service systemd-journald.service dbus.service/Requires=systemd-journald.service/' /usr/lib/systemd/system/ipa-server-upgrade.service
+RUN sed -i 's/After=systemd-tmpfiles-setup.service systemd-journald.service dbus.service/After=systemd-journald.service dbus.service/' /usr/lib/systemd/system/ipa-server-upgrade.service
+RUN sed -i 's/Requires=systemd-tmpfiles-setup.service systemd-journald.service dbus.service/Requires=systemd-journald.service/' /usr/lib/systemd/system/container-ipa.target
+RUN sed -i 's/After=systemd-tmpfiles-setup.service systemd-journald.service dbus.service/After=systemd-journald.service dbus.service/' /usr/lib/systemd/system/container-ipa.target
+
 # Just copy the ocp4 include shell file and parse the include list to 
 # add it at the end
 # COPY ./init/ocp4.inc.sh /usr/local/share/ipa-container/ocp4.inc.sh
