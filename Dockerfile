@@ -5,6 +5,20 @@ ARG PARENT_IMG=quay.io/freeipa/freeipa-server:fedora-35
 # hadolint ignore=DL3006
 FROM ${PARENT_IMG}
 
+# dirsrv@.service must not depend on special systemd feature which won't work in OKD/OpenShift
+RUN sed -i 's/^ProtectSystem=full/# ProtectSystem=full/g' /usr/lib/systemd/system/dirsrv@.service
+RUN sed -i 's/^ReadWritePaths=/# ReadWritePaths=/g' /usr/lib/systemd/system/dirsrv@.service
+RUN sed -i 's/^ProtectHome=true/# ProtectHome=true/g' /usr/lib/systemd/system/dirsrv@.service
+RUN sed -i 's/^PrivateDevices=true/# PrivateDevices=true/g' /usr/lib/systemd/system/dirsrv@.service
+RUN sed -i 's/^ProtectHostname=true/# ProtectHostname=true/g' /usr/lib/systemd/system/dirsrv@.service
+RUN sed -i 's/^ProtectClock=true/# ProtectClock=true/g' /usr/lib/systemd/system/dirsrv@.service
+RUN sed -i 's/^ProtectKernelTunables=true/# ProtectKernelTunables=true/g' /usr/lib/systemd/system/dirsrv@.service
+RUN sed -i 's/^ProtectKernelModules=true/# ProtectKernelModules=true/g' /usr/lib/systemd/system/dirsrv@.service
+RUN sed -i 's/^ProtectKernelLogs=true/# ProtectKernelLogs=true/g' /usr/lib/systemd/system/dirsrv@.service
+RUN sed -i 's/^ProtectKernelLogs=true/# ProtectKernelLogs=true/g' /usr/lib/systemd/system/dirsrv@.service
+RUN sed -i 's/^ProtectControlGroups=true/# ProtectControlGroups=true/g' /usr/lib/systemd/system/dirsrv@.service
+RUN sed -i 's/^RestrictRealtime=true/# RestrictRealtime=true/g' /usr/lib/systemd/system/dirsrv@.service
+
 # Just copy the ocp4 include shell file and parse the include list to 
 # add it at the end
 # COPY ./init/ocp4.inc.sh /usr/local/share/ipa-container/ocp4.inc.sh
