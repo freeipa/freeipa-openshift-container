@@ -499,7 +499,9 @@ class SymlinkCreate(Action):
     """L - create symlink"""
 
     def apply_one(self, path):
-        if not os.path.exists(path):
+        # only create symlink if it does not exists yet
+        # don't care about existing but broken links
+        if not os.path.exists(path) and not os.path.islink(path):
             if self.arg is None:
                 # TODO link to /usr/share/factory/FILE
                 # (see tmpfiles.d(5) for details)
@@ -511,10 +513,14 @@ class SymlinkRecreate(SymlinkCreate):
     """L+ - [re]create symlink"""
 
     def apply_one(self, path):
-        if os.path.exists(path):
+        # need to detect if path is broken link, because
+        # os.path.exists returns False for broken symbolic links
+        if os.path.exists(path) or os.path.islink(path):
             if not os.path.islink(path) and os.path.isdir(path):
+                # remove directory with all its content
                 shutil.rmtree(path)
             else:
+                # remove existing file or link (but not target file)
                 os.unlink(path)
         super().apply(path)
 
